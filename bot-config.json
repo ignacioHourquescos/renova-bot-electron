@@ -165,48 +165,48 @@
   "semi": [
     {
       "code": "4100/10W40/PROTECT/5",
-      "shortTitle": "MOTUL PROTECT 10W40 5L",
+      "shortTitle": "MOTUL PROTECT 5L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "MOTUL    "
     },
     {
       "code": "04VA153",
-      "shortTitle": "Premium Prot. 10W40 3,8",
+      "shortTitle": "Premium Prot 3,8L",
       "discount": 10,
       "expositionCode": "VALVO    "
     },
     {
       "code": "GF/10W40/4",
-      "shortTitle": "Gulf 10W40 4L",
+      "shortTitle": "Gulf 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "GULF      "
     },
     {
       "code": "PE/10W40/4",
-      "shortTitle": "Puma 10W40 4L",
+      "shortTitle": "Puma 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "PUMA      "
     },
     {
       "code": "MO/10W40/4",
-      "shortTitle": "MOTORCRAFT 10W40 4L",
+      "shortTitle": "MOTORCRAFT 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "MOTROCRAFT"
     },
     {
       "code": "SYNTIUM/1000/10W40/4",
-      "shortTitle": "SYNTIUM1000 10W40 4L",
+      "shortTitle": "SYNTIUM1000 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "PETRONAS  "
     },
     {
       "code": "MAN/10W40/5",
-      "shortTitle": "MANNOL 10W40 5L",
+      "shortTitle": "MANNOL 5L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "MANNOL    "
@@ -220,42 +220,42 @@
     },
     {
       "code": "EVO700N/10W40/4",
-      "shortTitle": "ELF 10W40 4L",
+      "shortTitle": "ELF 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "ELF       "
     },
     {
       "code": "7000N/4",
-      "shortTitle": "TOTAL 7000 10W40 4L",
+      "shortTitle": "TOTAL 7000 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "TOTAL    "
     },
     {
       "code": "CAS/10W40/4",
-      "shortTitle": "CASTROL MAGNATEC 10W40 4L",
+      "shortTitle": "CASTROL MAGNATEC 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "CASTRO    "
     },
     {
       "code": "4100/5",
-      "shortTitle": "MOTUL SYN-NERGY 10W40 5L",
+      "shortTitle": "MOTUL SYN-NERGY 5L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "MOTUL    "
     },
     {
       "code": "4100/10W40/PROTECT/4",
-      "shortTitle": "MOTUL PROTECT 10W40 4L",
+      "shortTitle": "MOTUL PROTECT 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "MOTUL    "
     },
     {
       "code": "OC/10W40/4",
-      "shortTitle": "OMNICRAFT 10W40 4L",
+      "shortTitle": "OMNICRAFT 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "OMNICRAFT"

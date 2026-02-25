@@ -36,10 +36,12 @@ async function fetchPriceMap(): Promise<Map<string, PriceEntry>> {
 
 /**
  * Formatea un precio: sin decimales, miles separados por punto.
- * Ej: 29990.25 → "29.990"
+ * Ej: 38000 → "38.000", 25990.25 → "25.990"
  */
 function formatPrice(price: number): string {
-  return Math.round(price).toLocaleString('de-DE');
+  // Redondear a entero y formatear con punto como separador de miles
+  const rounded = Math.round(price);
+  return rounded.toLocaleString('de-DE');
 }
 
 /**
@@ -65,11 +67,10 @@ interface PriceRow {
 /**
  * Formatea una lista de {desc, price} para WhatsApp.
  *
- * Formato: [descripción] - [precio]
- * - Descripción primero
+ * Formato: `[descripción]` - [precio]
+ * - Descripción en código inline (backticks simples) con fondo gris
  * - Separador " - "
- * - Precio: con $ incluido
- * - Sin tabs, sin bloques de código
+ * - Precio: con $ incluido, texto normal
  */
 function formatWhatsAppPriceList(rows: PriceRow[]): string {
   if (rows.length === 0) return '';
@@ -88,8 +89,8 @@ function formatWhatsAppPriceList(rows: PriceRow[]): string {
 
   const lines: string[] = [];
   for (const row of normalizedRows) {
-    // Construir línea: descripción - precio
-    lines.push(row.desc + SEPARATOR + row.price);
+    // Construir línea: `descripción` precio (solo descripción en código inline)
+    lines.push(`\`${row.desc}\` ${row.price}`);
   }
   return lines.join('\n');
 }
@@ -156,12 +157,12 @@ export async function formatCategory(categoryName: string, items: (string | Cate
 
   // Armar mensaje final
   const title = categoryName.toUpperCase();
-  const parts: string[] = [`*${title}*`];
+  const parts: string[] = [title];
 
   for (const section of sections) {
     if (section.rows.length === 0 && !section.header) continue;
     if (section.header) {
-      parts.push(`\n*${section.header}*`);
+      parts.push(`\n${section.header}`);
     }
     if (section.rows.length > 0) {
       parts.push(formatWhatsAppPriceList(section.rows));
