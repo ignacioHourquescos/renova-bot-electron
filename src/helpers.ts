@@ -23,3 +23,4 @@ export function getMessageText(message: any): string {
   return '[Mensaje sin texto]';
 }
 
+

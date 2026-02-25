@@ -164,8 +164,29 @@
   "bidon": [],
   "semi": [
     {
+      "code": "4100/5",
+      "shortTitle": "MOTUL SYN-NERGY 5L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTUL    "
+    },
+    {
       "code": "4100/10W40/PROTECT/5",
       "shortTitle": "MOTUL PROTECT 5L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTUL    "
+    },
+    {
+      "code": "CAS/10W40/4",
+      "shortTitle": "CASTROL MAGNATEC 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "CASTRO    "
+    },
+    {
+      "code": "4100/10W40/PROTECT/4",
+      "shortTitle": "MOTUL PROTECT 4L",
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "MOTUL    "
@@ -231,27 +252,6 @@
       "discount": 10,
       "fixedPrice": null,
       "expositionCode": "TOTAL    "
-    },
-    {
-      "code": "CAS/10W40/4",
-      "shortTitle": "CASTROL MAGNATEC 4L",
-      "discount": 10,
-      "fixedPrice": null,
-      "expositionCode": "CASTRO    "
-    },
-    {
-      "code": "4100/5",
-      "shortTitle": "MOTUL SYN-NERGY 5L",
-      "discount": 10,
-      "fixedPrice": null,
-      "expositionCode": "MOTUL    "
-    },
-    {
-      "code": "4100/10W40/PROTECT/4",
-      "shortTitle": "MOTUL PROTECT 4L",
-      "discount": 10,
-      "fixedPrice": null,
-      "expositionCode": "MOTUL    "
     },
     {
       "code": "OC/10W40/4",

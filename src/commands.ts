@@ -67,10 +67,10 @@ interface PriceRow {
 /**
  * Formatea una lista de {desc, price} para WhatsApp.
  *
- * Formato: `[descripción]` - [precio]
- * - Descripción en código inline (backticks simples) con fondo gris
- * - Separador " - "
- * - Precio: con $ incluido, texto normal
+ * Formato: `[descripción]` (arriba con fondo gris)
+ *          [precio] (abajo, texto normal)
+ * - Descripción primero: en código inline (backticks simples) con fondo gris
+ * - Precio después: con $ incluido, texto normal, en línea siguiente
  */
 function formatWhatsAppPriceList(rows: PriceRow[]): string {
   if (rows.length === 0) return '';
@@ -89,8 +89,9 @@ function formatWhatsAppPriceList(rows: PriceRow[]): string {
 
   const lines: string[] = [];
   for (const row of normalizedRows) {
-    // Construir línea: `descripción` precio (solo descripción en código inline)
-    lines.push(`\`${row.desc}\` ${row.price}`);
+    // Construir: descripción arriba (código inline), precio abajo
+    lines.push(`\`${row.desc}\``);
+    lines.push(row.price);
   }
   return lines.join('\n');
 }
@@ -157,7 +158,10 @@ export async function formatCategory(categoryName: string, items: (string | Cate
 
   // Armar mensaje final
   const title = categoryName.toUpperCase();
-  const parts: string[] = [title];
+  const parts: string[] = [];
+  
+  // Agregar encabezado: "Precio" y título en negrita
+  parts.push(`*Precio* *${title}*`);
 
   for (const section of sections) {
     if (section.rows.length === 0 && !section.header) continue;

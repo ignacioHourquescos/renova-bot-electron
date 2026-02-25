@@ -130,3 +130,4 @@ export function isMediaMessage(message: any): boolean {
   return ['imageMessage', 'documentMessage', 'videoMessage', 'audioMessage'].includes(contentType || '');
 }
 
+
