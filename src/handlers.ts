@@ -1,7 +1,7 @@
 import { WASocket, DisconnectReason } from '@whiskeysockets/baileys';
 import { getPhoneNumber, getMessageText } from './helpers.js';
 import { downloadMedia, isMediaMessage } from './media.js';
-import { formatCategory } from './commands.js';
+import { formatCategory, buscarCodigo, consultarCosto } from './commands.js';
 import { loadBotConfig } from './config.js';
 
 // ─── Deduplicación ──────────────────────────────────────────────────────────
@@ -37,6 +37,32 @@ async function sendSafe(sock: WASocket, jid: string, message: any): Promise<bool
 // ─── Router de comandos ─────────────────────────────────────────────────────
 async function handleCommand(sock: WASocket, from: string, text: string, senderInfo: string): Promise<boolean> {
   const lower = text.toLowerCase().trim();
+
+  // Comando busco.[código]
+  if (lower.startsWith('busco.')) {
+    const codigo = text.substring(6).trim();
+    if (codigo) {
+      const result = await buscarCodigo(codigo);
+      await sendSafe(sock, from, { text: result });
+      return true;
+    } else {
+      await sendSafe(sock, from, { text: '❌ Por favor, especifica un código. Ejemplo: busco.CF9323' });
+      return true;
+    }
+  }
+
+  // Comando costo.[código]
+  if (lower.startsWith('costo.')) {
+    const codigo = text.substring(6).trim();
+    if (codigo) {
+      const result = await consultarCosto(codigo);
+      await sendSafe(sock, from, { text: result });
+      return true;
+    } else {
+      await sendSafe(sock, from, { text: '❌ Por favor, especifica un código. Ejemplo: costo.CF9323' });
+      return true;
+    }
+  }
 
   // Comandos dinámicos de categorías (desde bot-config.json)
   if (lower.startsWith('.')) {

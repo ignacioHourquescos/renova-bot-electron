@@ -175,3 +175,90 @@ export async function formatCategory(categoryName: string, items: (string | Cate
 
   return parts.join('\n');
 }
+
+/**
+ * Busca un código en el sistema y devuelve todos los artículos relacionados.
+ * Formato: Código (monospace), Descripción (itálica), Stock (negrita)
+ */
+export async function buscarCodigo(codigo: string): Promise<string> {
+  try {
+    const response = await fetch(`${API_URL}/obtenerArticulo/${codigo.toUpperCase()}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return `❌ No se encontró el código \`${codigo.toUpperCase()}\` en el sistema.`;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const articles = await response.json();
+    
+    // El endpoint devuelve un array de artículos
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return `❌ No se encontraron artículos para el código \`${codigo.toUpperCase()}\`.`;
+    }
+    
+    // Filtrar solo artículos con stock mayor a cero
+    const articlesConStock = articles.filter(article => {
+      const stock = article.CANT_STOCK || article.CANT_STO || article.stock || 0;
+      return stock > 0;
+    });
+    
+    if (articlesConStock.length === 0) {
+      return `❌ No se encontraron artículos con stock disponible para el código \`${codigo.toUpperCase()}\`.`;
+    }
+    
+    const lines: string[] = [];
+    for (let i = 0; i < articlesConStock.length; i++) {
+      const article = articlesConStock[i];
+      const codigoArt = article.COD_ARTICULO || article.codigo || 'Sin código';
+      const descripcion = article.DESCRIP_ARTI || article.descripcion || article.d || 'Sin descripción';
+      const stock = article.CANT_STOCK || article.CANT_STO || article.stock || 0;
+      
+      // Formato: cada atributo en su propia línea
+      lines.push(`\`${codigoArt}\``);
+      lines.push(`_${descripcion}_`);
+      lines.push(`*Stock: ${stock}*`);
+      
+      // Salto de línea entre bloques (excepto después del último)
+      if (i < articlesConStock.length - 1) {
+        lines.push('');
+      }
+    }
+    
+    return lines.join('\n');
+  } catch (error) {
+    console.error('Error al buscar código:', error);
+    return `❌ Error al consultar el sistema. Intenta más tarde.`;
+  }
+}
+
+/**
+ * Consulta el stock y precio con IVA de un código.
+ */
+export async function consultarCosto(codigo: string): Promise<string> {
+  try {
+    const response = await fetch(`${API_URL}/obtenerArticulo/${codigo.toUpperCase()}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return `❌ No se encontró el código \`${codigo.toUpperCase()}\` en el sistema.`;
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const article = await response.json();
+    
+    if (article && article.pr != null) {
+      const precioConIva = calcFinalPrice(article.pr, null);
+      const precioFormateado = formatPrice(precioConIva);
+      
+      return `*Código:* \`${codigo.toUpperCase()}\`\n*Descripción:* ${article.d || 'Sin descripción'}\n*Precio con IVA:* $${precioFormateado}`;
+    } else {
+      return `❌ No se pudo obtener el precio para el código \`${codigo.toUpperCase()}\`.`;
+    }
+  } catch (error) {
+    console.error('Error al consultar costo:', error);
+    return `❌ Error al consultar el sistema. Intenta más tarde.`;
+  }
+}
