@@ -14,99 +14,88 @@
     ">>BIDONES",
     {
       "code": "04ZN004",
-      "shortTitle": "Valvoline Zerex 100% Rojo 4L",
+      "shortTitle": "Valvoline 100% Rojo 4L",
       "discount": 10,
       "finalPrice": 29990.25
     },
     {
       "code": "06ZX040",
-      "shortTitle": "Valvoline Zerex 100% Rojo 1L",
+      "shortTitle": "Valvoline 100% Rojo 1L",
       "discount": 10,
       "finalPrice": 8499.6
     },
     {
       "code": "06ZX030",
-      "shortTitle": "Valvoline Zerex 100% Verde 1L",
+      "shortTitle": "Valvoline 100% Verde 1L",
       "discount": 10,
       "finalPrice": 7750.43
     },
     {
       "code": "06ZX050",
-      "shortTitle": "Valvoline Zerex 100% Amarillo 4L",
+      "shortTitle": "Valvoline n100% Amarillo 4L",
       "discount": 10,
       "finalPrice": 7999.95
     },
     {
       "code": "GLACELF/AMA/1",
-      "shortTitle": "Total Glacelf 100% Amarillo 1L",
+      "shortTitle": "Total 100% Amarillo 1L",
       "discount": 10,
       "finalPrice": 9802.8
     },
     {
       "code": "GLACELF/ROJO/1",
-      "shortTitle": "Total Glacelf 100% Rojo 1L",
+      "shortTitle": "Total 100% Rojo 1L",
       "discount": 10,
       "finalPrice": 9802.8
     },
     {
       "code": "GLACELF/VERDE/1",
-      "shortTitle": "Total Galcenf 100% Verde 1L",
+      "shortTitle": "Total 100% Verde 1L",
       "discount": 10,
       "finalPrice": 5385.58
     },
     {
       "code": "PARAFLU/AMARILLO",
-      "shortTitle": "Petronas Paraflu 100% Amarillo 1L",
+      "shortTitle": "Petronas 100% Amarillo 1L",
       "discount": 10,
       "finalPrice": 7544.67
     },
     {
       "code": "PARAFLU/ROJO",
-      "shortTitle": "Petronas Paraflu 100% Rojo 1L",
+      "shortTitle": "Petronas 100% Rojo 1L",
       "discount": 10,
       "finalPrice": 7450.36
     },
     {
       "code": "PARAFLU/VERDE",
-      "shortTitle": "Petronas Paraflu 100% Verde 205L",
+      "shortTitle": "Petronas 100% Verde 205L",
       "discount": 10,
       "finalPrice": 5675.13
     },
     ">>BALDES Y TAMBORES",
     {
       "code": "01ZN878",
-      "shortTitle": "Valvoline Zerex 50%/50% Verde 19L",
+      "shortTitle": "Valvoline 50%/50% Verde 19L",
       "discount": null
     },
     {
       "code": "01ZN090",
-      "shortTitle": "Valvoline Zerex 50%/50% Rojo 19L",
+      "shortTitle": "Valvoline 50%/50% Rojo 19L",
       "discount": null
     },
     {
       "code": "BALDE/PARAFLU VERDE",
-      "shortTitle": "Petronas Paraflu 100% Verde 20L",
+      "shortTitle": "Petronas 100% Verde 20L",
       "discount": null,
       "finalPrice": 4602.33
     },
     {
       "code": "01ZN024",
-      "shortTitle": "Valvoline Zerex 50%/50% Verde 205L",
+      "shortTitle": "Valvoline 50%/50% Verde 205L",
       "discount": null
     }
   ],
-  "lubri": [
-    {
-      "code": "8100/5",
-      "discount": 10,
-      "finalPrice": 56011.34
-    },
-    {
-      "code": "4100/5",
-      "discount": 10,
-      "finalPrice": 47084.43
-    }
-  ],
+  "lubri": [],
   "tambor": [
     ">>VAVLOLINE",
     "01VA486",
@@ -149,18 +138,12 @@
   ],
   "bidon": [],
   "semi": [
-    {
-      "code": "4100/5",
-      "shortTitle": "MOTUL SYN-NERGY 5L",
-      "discount": 10,
-      "fixedPrice": null,
-      "expositionCode": "MOTUL    "
-    },
+    ">>🔥🔥🔥",
     {
       "code": "4100/10W40/PROTECT/5",
       "shortTitle": "MOTUL PROTECT 5L",
-      "discount": 10,
-      "fixedPrice": null,
+      "discount": null,
+      "fixedPrice": 32500,
       "expositionCode": "MOTUL    "
     },
     {
@@ -173,8 +156,8 @@
     {
       "code": "4100/10W40/PROTECT/4",
       "shortTitle": "MOTUL PROTECT 4L",
-      "discount": 10,
-      "fixedPrice": null,
+      "discount": null,
+      "fixedPrice": 27500,
       "expositionCode": "MOTUL    "
     },
     {
@@ -245,6 +228,84 @@
       "discount": 0,
       "fixedPrice": null,
       "expositionCode": "OMNICRAFT"
+    }
+  ],
+  "destacado": [
+    ">>🔥🔥🔥 LUBRICANTES",
+    {
+      "code": "8100/5",
+      "discount": 10,
+      "finalPrice": 56011.34
+    },
+    {
+      "code": "OC/10W40/4",
+      "shortTitle": "OMNICRAFT 4L",
+      "discount": 0,
+      "fixedPrice": null,
+      "expositionCode": "OMNICRAFT"
+    },
+    {
+      "code": "04VA153",
+      "shortTitle": "Premium Prot 3,8L",
+      "discount": 10,
+      "expositionCode": "VALVO    "
+    },
+    {
+      "code": "GF/10W40/4",
+      "shortTitle": "Gulf 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "GULF      "
+    },
+    {
+      "code": "EVO700N/10W40/4",
+      "shortTitle": "ELF 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "ELF       "
+    },
+    {
+      "code": "PE/10W40/4",
+      "shortTitle": "Puma 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "PUMA      "
+    },
+    {
+      "code": "MO/10W40/4",
+      "shortTitle": "MOTORCRAFT 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTROCRAFT"
+    },
+    ">>🔥🔥🔥KITS",
+    "KIT FIAT MOBI",
+    "KIT RENAULT K7M",
+    "KIT CLIO K4M",
+    ">>🔥🔥🔥 VARIOS",
+    {
+      "code": "GLACELF/AMA/1",
+      "shortTitle": "Total Glacelf 100% Amarillo 1L",
+      "discount": 10,
+      "finalPrice": 9802.8
+    },
+    {
+      "code": "GLACELF/ROJO/1",
+      "shortTitle": "Total Glacelf 100% Rojo 1L",
+      "discount": 10,
+      "finalPrice": 9802.8
+    },
+    {
+      "code": "GLACELF/VERDE/1",
+      "shortTitle": "Total Galcenf 100% Verde 1L",
+      "discount": 10,
+      "finalPrice": 5385.58
+    },
+    {
+      "code": "PARAFLU/AMARILLO",
+      "shortTitle": "Petronas Paraflu 100% Amarillo 1L",
+      "discount": 10,
+      "finalPrice": 7544.67
     }
   ]
 }

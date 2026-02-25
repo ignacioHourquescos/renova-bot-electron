@@ -89,9 +89,9 @@ function formatWhatsAppPriceList(rows: PriceRow[]): string {
 
   const lines: string[] = [];
   for (const row of normalizedRows) {
-    // Construir: descripción arriba (código inline), precio abajo
+    // Construir: descripción arriba (código inline), precio abajo en negrita
     lines.push(`\`${row.desc}\``);
-    lines.push(row.price);
+    lines.push(`*${row.price}*`);
   }
   return lines.join('\n');
 }

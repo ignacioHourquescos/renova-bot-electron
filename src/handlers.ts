@@ -91,7 +91,14 @@ export function registerMessageHandler(sock: WASocket) {
     const msgId = `${message.key.remoteJid}_${message.key.id}`;
     if (isDuplicate(msgId)) return;
 
-    if (m.type !== 'notify' && !(m.type === 'append' && message.key.fromMe)) return;
+    // Permitir mensajes de notify, append (de mí), y mensajes de grupos/difusión
+    const isGroup = message.key.remoteJid?.endsWith('@g.us');
+    const isBroadcast = message.key.remoteJid?.includes('@broadcast');
+    
+    if (m.type !== 'notify' && !(m.type === 'append' && message.key.fromMe)) {
+      // Permitir también mensajes de grupos/difusión
+      if (!isGroup && !isBroadcast) return;
+    }
 
     const messageText = getMessageText(message.message);
     const from = message.key.remoteJid || '';
@@ -108,12 +115,12 @@ export function registerMessageHandler(sock: WASocket) {
 
     const senderInfo = isFromMe ? 'tu' : phoneNumber;
 
-    // Ejecutar comando
+    // Ejecutar comando (funciona en chats individuales, grupos y listas de difusión)
     const wasCommand = await handleCommand(sock, from, messageText, senderInfo);
     if (wasCommand) return;
 
-    // Solo para mensajes de otros
-    if (!isFromMe) {
+    // Solo para mensajes de otros en chats individuales (no en grupos para evitar spam)
+    if (!isFromMe && !isGroup && !isBroadcast) {
       if (message.message && isMediaMessage(message.message)) {
         console.log(`📎 Media detectado de ${phoneNumber}`);
         await downloadMedia(message.message, phoneNumber, messageId, sock);

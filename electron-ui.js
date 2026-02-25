@@ -140,6 +140,11 @@ let currentConfig = {};
 async function loadConfig() {
     try {
         currentConfig = await window.electronAPI.getConfig();
+        // Asegurar que la categoría "destacado" exista
+        if (!currentConfig.destacado) {
+            currentConfig.destacado = [];
+            await window.electronAPI.saveConfig(currentConfig);
+        }
         renderSidebarCategories();
     } catch (e) {
         console.error('Error cargando config:', e);
@@ -305,6 +310,10 @@ function renderItems(category) {
         div.addEventListener('drop', (e) => handleDrop(e, category, index));
 
         const dragHandle = `<span class="cat-item-drag" title="Arrastrar para reordenar">⠿</span>`;
+        
+        // Verificar si el item está destacado
+        const isDestacado = isItemInDestacado(item);
+        const checkboxId = `destacado-${category}-${index}`;
 
         if (typeof item === 'object' && item !== null) {
             const code = item.code || '';
@@ -323,6 +332,7 @@ function renderItems(category) {
                     <span class="cat-item-index">${index + 1}</span>
                     <span class="cat-item-code">${code.substring(2)}</span>
                     <span class="cat-item-fields"></span>
+                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
             } else {
@@ -345,8 +355,18 @@ function renderItems(category) {
                             ${hasDiscount ? 'disabled' : ''}
                             onchange="handleFixedPriceChange('${category}', ${index}, this)">
                     </div>
+                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
+            }
+            
+            // Agregar event listener al checkbox después de crear el innerHTML
+            const checkbox = div.querySelector(`#${checkboxId}`);
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    toggleDestacado(category, index);
+                });
             }
         } else {
             // String item
@@ -359,6 +379,7 @@ function renderItems(category) {
                     <span class="cat-item-index">${index + 1}</span>
                     <span class="cat-item-code">${text.substring(2)}</span>
                     <span class="cat-item-fields"></span>
+                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
             } else {
@@ -367,8 +388,18 @@ function renderItems(category) {
                     <span class="cat-item-index">${index + 1}</span>
                     <span class="cat-item-code">${text}</span>
                     <span class="cat-item-fields"></span>
+                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
+            }
+            
+            // Agregar event listener al checkbox después de crear el innerHTML
+            const checkbox = div.querySelector(`#${checkboxId}`);
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    toggleDestacado(category, index);
+                });
             }
         }
 
@@ -527,6 +558,94 @@ async function saveConfig(category) {
     }
 }
 
+// ── Verificar si un item ya está en destacado ──
+function isItemInDestacado(item) {
+    if (!currentConfig.destacado) return false;
+    
+    // Comparar items (string o objeto)
+    return currentConfig.destacado.some(destacadoItem => {
+        if (typeof item === 'string' && typeof destacadoItem === 'string') {
+            return item === destacadoItem;
+        }
+        if (typeof item === 'object' && typeof destacadoItem === 'object') {
+            // Comparar por código
+            const itemCode = item.code || '';
+            const destacadoCode = destacadoItem.code || '';
+            return itemCode === destacadoCode;
+        }
+        return false;
+    });
+}
+
+// ── Toggle destacado: agregar o quitar de destacado sin mover de la categoría original ──
+async function toggleDestacado(category, index) {
+    try {
+        console.log('toggleDestacado llamado:', category, index);
+        
+        // Asegurar que la categoría destacado existe
+        if (!currentConfig.destacado) {
+            currentConfig.destacado = [];
+        }
+
+        const items = currentConfig[category] || [];
+        if (index < 0 || index >= items.length) {
+            console.log('Índice inválido:', index, 'items.length:', items.length);
+            return;
+        }
+
+        // Obtener el item
+        const item = items[index];
+        console.log('Item obtenido:', item);
+        
+        // Verificar si ya está en destacado
+        const isInDestacado = isItemInDestacado(item);
+        console.log('Está en destacado:', isInDestacado);
+        
+        if (isInDestacado) {
+            // Quitar de destacado
+            const destacadoIndex = currentConfig.destacado.findIndex(destacadoItem => {
+                if (typeof item === 'string' && typeof destacadoItem === 'string') {
+                    return item === destacadoItem;
+                }
+                if (typeof item === 'object' && typeof destacadoItem === 'object') {
+                    const itemCode = item.code || '';
+                    const destacadoCode = destacadoItem.code || '';
+                    return itemCode === destacadoCode;
+                }
+                return false;
+            });
+            
+            if (destacadoIndex !== -1) {
+                currentConfig.destacado.splice(destacadoIndex, 1);
+                console.log('Item removido de destacado');
+            }
+        } else {
+            // Agregar a destacado (copiar, no mover)
+            // Hacer una copia profunda del item
+            const itemCopy = typeof item === 'object' && item !== null
+                ? JSON.parse(JSON.stringify(item))
+                : item;
+            currentConfig.destacado.push(itemCopy);
+            console.log('Item agregado a destacado');
+        }
+
+        // Guardar y actualizar
+        await saveConfig(category);
+        await saveConfig('destacado');
+        
+        // Re-renderizar todas las categorías para actualizar el estado de los checkboxes
+        for (const cat of Object.keys(currentConfig)) {
+            renderItems(cat);
+            updateSidebarBadge(cat);
+            updateCategoryHeader(cat);
+        }
+        
+        console.log('Toggle completado');
+    } catch (error) {
+        console.error('Error en toggleDestacado:', error);
+    }
+}
+
 // ── Exponer funciones globales ──
 window.addItemAsCode = addItemAsCode;
 window.addItemAsTitle = addItemAsTitle;
@@ -537,6 +656,7 @@ window.removeItem = removeItem;
 window.addCategory = addCategory;
 window.deleteCategory = deleteCategory;
 window.switchTab = switchTab;
+window.toggleDestacado = toggleDestacado;
 
 // ── Init ──
 loadConfig();
