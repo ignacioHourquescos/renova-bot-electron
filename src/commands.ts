@@ -157,19 +157,25 @@ export async function formatCategory(categoryName: string, items: (string | Cate
   }
 
   // Armar mensaje final
-  const title = categoryName.toUpperCase();
   const parts: string[] = [];
-  
-  // Agregar encabezado: "Precio" y título en negrita
-  parts.push(`*Precio* *${title}*`);
+  let isFirstSection = true;
 
   for (const section of sections) {
     if (section.rows.length === 0 && !section.header) continue;
     if (section.header) {
-      parts.push(`\n${section.header}`);
+      // Doble salto de línea antes de cada subtítulo (excepto el primero)
+      if (!isFirstSection) {
+        parts.push('');
+        parts.push('');
+      }
+      // Subtítulos en negrita con salto de línea después
+      parts.push(`*${section.header}*`);
+      parts.push('');
+      isFirstSection = false;
     }
     if (section.rows.length > 0) {
       parts.push(formatWhatsAppPriceList(section.rows));
+      isFirstSection = false;
     }
   }
 
@@ -234,7 +240,8 @@ export async function buscarCodigo(codigo: string): Promise<string> {
 }
 
 /**
- * Consulta el stock y precio con IVA de un código.
+ * Consulta el stock y costo con IVA de un código.
+ * Usa COSTO_UNI_SIN_DTO y lo multiplica por 1.21 para incluir IVA.
  */
 export async function consultarCosto(codigo: string): Promise<string> {
   try {
@@ -247,16 +254,48 @@ export async function consultarCosto(codigo: string): Promise<string> {
       throw new Error(`HTTP ${response.status}`);
     }
     
-    const article = await response.json();
+    const articles = await response.json();
     
-    if (article && article.pr != null) {
-      const precioConIva = calcFinalPrice(article.pr, null);
-      const precioFormateado = formatPrice(precioConIva);
-      
-      return `*Código:* \`${codigo.toUpperCase()}\`\n*Descripción:* ${article.d || 'Sin descripción'}\n*Precio con IVA:* $${precioFormateado}`;
-    } else {
-      return `❌ No se pudo obtener el precio para el código \`${codigo.toUpperCase()}\`.`;
+    // El endpoint devuelve un array de artículos
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return `❌ No se encontraron artículos para el código \`${codigo.toUpperCase()}\`.`;
     }
+    
+    // Filtrar solo artículos con stock mayor a cero
+    const articlesConStock = articles.filter(article => {
+      const stock = article.CANT_STOCK || article.CANT_STO || article.stock || 0;
+      return stock > 0;
+    });
+    
+    if (articlesConStock.length === 0) {
+      return `❌ No se encontraron artículos con stock disponible para el código \`${codigo.toUpperCase()}\`.`;
+    }
+    
+    const lines: string[] = [];
+    for (let i = 0; i < articlesConStock.length; i++) {
+      const article = articlesConStock[i];
+      const codigoArt = article.COD_ARTICULO || article.codigo || 'Sin código';
+      const descripcion = article.DESCRIP_ARTI || article.descripcion || article.d || 'Sin descripción';
+      const stock = article.CANT_STOCK || article.CANT_STO || article.stock || 0;
+      const costoUniSinDto = article.COSTO_UNI_SIN_DTO || 0;
+      
+      // Calcular costo con IVA (multiplicar por 1.21)
+      const costoConIva = costoUniSinDto * 1.21;
+      const costoFormateado = formatPrice(costoConIva);
+      
+      // Formato: cada atributo en su propia línea
+      lines.push(`\`${codigoArt}\``);
+      lines.push(`_${descripcion}_`);
+      lines.push(`*Stock: ${stock}*`);
+      lines.push(`*Costo IVA incluido: $${costoFormateado}*`);
+      
+      // Salto de línea entre bloques (excepto después del último)
+      if (i < articlesConStock.length - 1) {
+        lines.push('');
+      }
+    }
+    
+    return lines.join('\n');
   } catch (error) {
     console.error('Error al consultar costo:', error);
     return `❌ Error al consultar el sistema. Intenta más tarde.`;

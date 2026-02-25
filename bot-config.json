@@ -11,102 +11,88 @@
     "KIT FORD FOCUS"
   ],
   "refrigerantes": [
-    {
-      "code": ">>VALVOLINE",
-      "shortTitle": null,
-      "discount": null,
-      "finalPrice": null,
-      "locked": false
-    },
+    ">>BIDONES",
     {
       "code": "04ZN004",
-      "shortTitle": "Zerex 100% Rojo x 4L",
+      "shortTitle": "Valvoline Zerex 100% Rojo 4L",
       "discount": 10,
       "finalPrice": 29990.25
     },
     {
       "code": "06ZX040",
-      "shortTitle": "Zerex 100% Rojo x 1L",
+      "shortTitle": "Valvoline Zerex 100% Rojo 1L",
       "discount": 10,
       "finalPrice": 8499.6
     },
     {
-      "code": "01ZN090",
-      "shortTitle": "Zerex 50%/50% Rojo 19L",
-      "discount": null,
-      "finalPrice": 96000.01
-    },
-    {
       "code": "06ZX030",
-      "shortTitle": "Zerex 100% Verde 1L",
+      "shortTitle": "Valvoline Zerex 100% Verde 1L",
       "discount": 10,
       "finalPrice": 7750.43
     },
     {
       "code": "06ZX050",
-      "shortTitle": "Zerex 100% Amarillo4L",
+      "shortTitle": "Valvoline Zerex 100% Amarillo 4L",
       "discount": 10,
       "finalPrice": 7999.95
     },
     {
-      "code": "01ZN878",
-      "shortTitle": "Zerex 50%/50% Verde19L",
-      "discount": null,
-      "finalPrice": 83700.03
-    },
-    {
-      "code": ">>TOTAL",
-      "shortTitle": null,
-      "discount": null,
-      "finalPrice": null
-    },
-    {
       "code": "GLACELF/AMA/1",
-      "shortTitle": "Glacelf 100% Amarillo 1L",
+      "shortTitle": "Total Glacelf 100% Amarillo 1L",
       "discount": 10,
       "finalPrice": 9802.8
     },
     {
       "code": "GLACELF/ROJO/1",
-      "shortTitle": "Glacelf 100% Rojo 1L",
+      "shortTitle": "Total Glacelf 100% Rojo 1L",
       "discount": 10,
       "finalPrice": 9802.8
     },
     {
       "code": "GLACELF/VERDE/1",
-      "shortTitle": "Galcenf 100% Verde 1L",
+      "shortTitle": "Total Galcenf 100% Verde 1L",
       "discount": 10,
       "finalPrice": 5385.58
     },
     {
-      "code": ">>PETRONAS",
-      "shortTitle": null,
-      "discount": null,
-      "finalPrice": null
-    },
-    {
-      "code": "BALDE/PARAFLU VERDE",
-      "shortTitle": "Paraflu 100% Verde 20L",
-      "discount": null,
-      "finalPrice": 4602.33
-    },
-    {
       "code": "PARAFLU/AMARILLO",
-      "shortTitle": "Paraflu 100% Amarillo 1L",
+      "shortTitle": "Petronas Paraflu 100% Amarillo 1L",
       "discount": 10,
       "finalPrice": 7544.67
     },
     {
       "code": "PARAFLU/ROJO",
-      "shortTitle": "Paraflu 100% Rojo 1L",
+      "shortTitle": "Petronas Paraflu 100% Rojo 1L",
       "discount": 10,
       "finalPrice": 7450.36
     },
     {
       "code": "PARAFLU/VERDE",
-      "shortTitle": "Paraflu 100% Verde 205L",
+      "shortTitle": "Petronas Paraflu 100% Verde 205L",
       "discount": 10,
       "finalPrice": 5675.13
+    },
+    ">>BALDES Y TAMBORES",
+    {
+      "code": "01ZN878",
+      "shortTitle": "Valvoline Zerex 50%/50% Verde 19L",
+      "discount": null
+    },
+    {
+      "code": "01ZN090",
+      "shortTitle": "Valvoline Zerex 50%/50% Rojo 19L",
+      "discount": null
+    },
+    {
+      "code": "BALDE/PARAFLU VERDE",
+      "shortTitle": "Petronas Paraflu 100% Verde 20L",
+      "discount": null,
+      "finalPrice": 4602.33
+    },
+    {
+      "code": "01ZN024",
+      "shortTitle": "Valvoline Zerex 50%/50% Verde 205L",
+      "discount": null
     }
   ],
   "lubri": [
@@ -180,7 +166,7 @@
     {
       "code": "CAS/10W40/4",
       "shortTitle": "CASTROL MAGNATEC 4L",
-      "discount": 10,
+      "discount": 0,
       "fixedPrice": null,
       "expositionCode": "CASTRO    "
     },
@@ -235,7 +221,7 @@
     {
       "code": "hx7/10w40/4",
       "shortTitle": "SHELL HX7 4L",
-      "discount": 10,
+      "discount": 0,
       "fixedPrice": null,
       "expositionCode": "SHEll    "
     },
@@ -256,7 +242,7 @@
     {
       "code": "OC/10W40/4",
       "shortTitle": "OMNICRAFT 4L",
-      "discount": 10,
+      "discount": 0,
       "fixedPrice": null,
       "expositionCode": "OMNICRAFT"
     }

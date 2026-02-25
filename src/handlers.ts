@@ -71,7 +71,7 @@ async function handleCommand(sock: WASocket, from: string, text: string, senderI
     for (const [category, items] of Object.entries(config)) {
       if (cmdName === category.toLowerCase()) {
         // console.log(`📋 Consulta de .${category} de ${senderInfo}`);
-        await sendSafe(sock, from, { text: `🔍 Consultando precios de ${category}...` });
+        await sendSafe(sock, from, { text: `...` });
         const result = await formatCategory(category, items);
         await sendSafe(sock, from, { text: result });
         return true;
