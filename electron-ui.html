@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renova Bot - Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 95%;
+            max-width: 1400px;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Custom Titlebar ── */
+        .titlebar {
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 32px;
+            -webkit-app-region: drag;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .titlebar-title {
+            color: #999;
+            font-size: 12px;
+            padding-left: 12px;
+        }
+
+        .titlebar-btns {
+            display: flex;
+            -webkit-app-region: no-drag;
+        }
+
+        .titlebar-btn {
+            width: 46px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: #999;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .titlebar-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .titlebar-btn.close:hover {
+            background: #e81123;
+            color: #fff;
+        }
+
+        /* ── App Header ── */
+        .header {
+            background: #1a1a1a;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #333;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-status {
+            font-size: 12px;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .header-status-label {
+            opacity: 0.6;
+        }
+
+        .header-status-value {
+            padding: 4px 12px;
+            border-radius: 3px;
+            font-weight: 500;
+            font-size: 11px;
+        }
+
+        .header-status-value.running {
+            background: #2d8a2d;
+            color: white;
+        }
+
+        .header-status-value.stopped {
+            background: #555;
+            color: #ccc;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, filter 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .btn-start { background: #2d8a2d; color: white; }
+        .btn-start:hover:not(:disabled) { filter: brightness(1.15); }
+        .btn-stop { background: #cc0000; color: white; }
+        .btn-stop:hover:not(:disabled) { filter: brightness(1.15); }
+        .btn-restart { background: #666; color: white; }
+        .btn-restart:hover:not(:disabled) { filter: brightness(1.2); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* ── Layout: sidebar + content ── */
+        .app-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar (tabs) ── */
+        .sidebar {
+            width: 180px;
+            min-width: 180px;
+            background: #fafafa;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 12px 0 4px 0;
+        }
+
+        .sidebar-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #999;
+            padding: 0 16px;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 400;
+            color: #555;
+            text-align: left;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-tab:hover {
+            background: #f0f0f0;
+            color: #1a1a1a;
+        }
+
+        .sidebar-tab.active {
+            background: #fff;
+            color: #1a1a1a;
+            font-weight: 600;
+            border-left-color: #1a1a1a;
+        }
+
+        .sidebar-tab .tab-icon {
+            font-size: 14px;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar-tab .tab-label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sidebar-tab .tab-badge {
+            background: #e0e0e0;
+            color: #666;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .sidebar-tab.active .tab-badge {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .sidebar-add-row {
+            display: flex;
+            gap: 4px;
+        }
+
+        .sidebar-add-row input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 11px;
+            outline: none;
+            min-width: 0;
+        }
+
+        .sidebar-add-row input:focus {
+            border-color: #1a1a1a;
+        }
+
+        .sidebar-add-btn {
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 6px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .sidebar-add-btn:hover {
+            background: #333;
+        }
+
+        /* ── Main content area ── */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
+            min-height: 0;
+        }
+
+        .tab-pane {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .tab-pane.active {
+            display: flex;
+        }
+
+        #category-tabs-container {
+            display: contents;
+        }
+
+        /* ── Console tab ── */
+        .console-pane {
+            padding: 16px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .logs {
+            background: #0d0d0d;
+            color: #d4d4d4;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+            font-size: 12px;
+            line-height: 1.3;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #333;
+            white-space: pre;
+        }
+
+        .logs::-webkit-scrollbar { width: 6px; height: 6px; }
+        .logs::-webkit-scrollbar-track { background: #1a1a1a; }
+        .logs::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+
+        .log-line {
+            margin-bottom: 2px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .log-error { color: #ff6b6b; }
+        .log-success { color: #51cf66; }
+
+        /* ── Category tab ── */
+        .category-pane {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .category-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .category-header h2 span {
+            color: #999;
+            font-size: 13px;
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        .category-header .btn-delete-cat {
+            background: none;
+            border: 1px solid #cc0000;
+            color: #cc0000;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 6px 14px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .category-header .btn-delete-cat:hover {
+            background: #cc0000;
+            color: white;
+        }
+
+        .category-command-tag {
+            display: inline-block;
+            background: #1a1a1a;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .category-items-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            min-height: 0;
+        }
+
+        .category-items-list::-webkit-scrollbar { width: 6px; }
+        .category-items-list::-webkit-scrollbar-track { background: #f5f5f5; }
+        .category-items-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+        .cat-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 8px;
+            transition: background 0.1s;
+        }
+
+        .cat-item:hover {
+            background: #fafafa;
+        }
+
+        .cat-item:last-child {
+            border-bottom: none;
+        }
+
+        .cat-item.is-header {
+            background: #f8f8f8;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .cat-item-drag {
+            cursor: grab;
+            color: #ccc;
+            font-size: 16px;
+            padding: 0 4px;
+            flex-shrink: 0;
+            user-select: none;
+            transition: color 0.15s;
+            line-height: 1;
+        }
+
+        .cat-item-drag:hover {
+            color: #888;
+        }
+
+        .cat-item:active .cat-item-drag {
+            cursor: grabbing;
+        }
+
+        .cat-item.dragging {
+            opacity: 0.4;
+            background: #f0f0ff;
+        }
+
+        .cat-item.drag-over-top {
+            border-top: 2px solid #4a90d9;
+        }
+
+        .cat-item.drag-over-bottom {
+            border-bottom: 2px solid #4a90d9;
+        }
+
+        .cat-item-index {
+            color: #bbb;
+            font-size: 10px;
+            width: 24px;
+            text-align: right;
+            flex-shrink: 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .cat-item-code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1a1a1a;
+            min-width: 160px;
+            flex-shrink: 0;
+        }
+
+        .cat-item-fields {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex: 1;
+        }
+
+        .cat-item-field {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 6px 10px;
+            outline: none;
+            transition: border-color 0.15s;
+            box-sizing: border-box;
+        }
+
+        .cat-item-field:focus {
+            border-color: #1a1a1a;
+        }
+
+        .cat-item-field.field-code {
+            width: 140px;
+            min-width: 140px;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+
+        .cat-item-field.field-title {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .cat-item-field.field-discount {
+            width: 70px;
+            text-align: center;
+        }
+
+        .cat-item-field.field-fixed-price {
+            width: 100px;
+            text-align: right;
+        }
+
+        .cat-item-field.field-locked {
+            background: #f0f0f0;
+            color: #bbb;
+            cursor: not-allowed;
+            border-color: #e0e0e0;
+        }
+
+        /* Quitar flechas de inputs number */
+        .cat-item-field[type="number"]::-webkit-inner-spin-button,
+        .cat-item-field[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .cat-item .btn-remove {
+            background: none;
+            border: none;
+            color: #cc0000;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0.4;
+            transition: opacity 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .cat-item .btn-remove:hover {
+            opacity: 1;
+            background: #fff0f0;
+        }
+
+        /* ── Add item row ── */
+        .category-add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-shrink: 0;
+        }
+
+        .category-add-row input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .category-add-row input:focus {
+            border-color: #1a1a1a;
+        }
+
+        .category-add-row .btn-add {
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .category-add-row .btn-add:hover {
+            background: #333;
+        }
+
+        .category-add-row .btn-add.btn-title {
+            background: #6c4ea1;
+        }
+
+        .category-add-row .btn-add.btn-title:hover {
+            background: #7d5cb8;
+        }
+
+        .category-save-msg {
+            font-size: 11px;
+            color: #51cf66;
+            margin-top: 6px;
+            min-height: 16px;
+            flex-shrink: 0;
+        }
+
+        /* ── Fixed commands tab ── */
+        .fixed-commands {
+            padding: 20px;
+        }
+
+        .fixed-cmd-card {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .fixed-cmd-card strong {
+            font-size: 14px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .fixed-cmd-card span {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .fixed-cmd-card code {
+            display: inline-block;
+            margin-top: 8px;
+            background: #1a1a1a;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Custom frameless titlebar -->
+        <div class="titlebar">
+            <span class="titlebar-title">Renova Bot</span>
+            <div class="titlebar-btns">
+                <button class="titlebar-btn" id="titlebar-min" title="Minimizar">─</button>
+                <button class="titlebar-btn" id="titlebar-max" title="Maximizar">☐</button>
+                <button class="titlebar-btn close" id="titlebar-close" title="Cerrar">✕</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <div class="header-left">
+                <h1>🤖 Renova Bot</h1>
+            </div>
+            <div class="header-controls">
+                <button id="btnStart" class="btn btn-start">▶️ Iniciar</button>
+                <button id="btnStop" class="btn btn-stop" disabled>⏹️ Detener</button>
+                <button id="btnRestart" class="btn btn-restart" disabled>🔄 Reiniciar</button>
+            </div>
+            <div class="header-status">
+                <span class="header-status-label">ESTADO:</span>
+                <span id="status" class="header-status-value stopped">Bot Detenido</span>
+            </div>
+        </div>
+
+        <div class="app-body">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">General</div>
+                    <button class="sidebar-tab active" data-tab="consola" onclick="switchTab('consola')">
+                        <span class="tab-icon">🖥️</span>
+                        <span class="tab-label">Consola</span>
+                    </button>
+                    <button class="sidebar-tab" data-tab="comandos" onclick="switchTab('comandos')">
+                        <span class="tab-icon">⚡</span>
+                        <span class="tab-label">Comandos</span>
+                    </button>
+                </div>
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Categorías</div>
+                    <div id="sidebar-categories"></div>
+                </div>
+                <div class="sidebar-bottom">
+                    <div class="sidebar-add-row">
+                        <input type="text" id="new-category-input" placeholder="nueva cat...">
+                        <button class="sidebar-add-btn" onclick="addCategory()">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <div class="main-content">
+                <!-- Console tab -->
+                <div class="tab-pane active" id="tab-consola">
+                    <div class="console-pane">
+                        <div class="logs" id="logs"></div>
+                    </div>
+                </div>
+
+                <!-- Fixed commands tab -->
+                <div class="tab-pane" id="tab-comandos">
+                    <div class="fixed-commands">
+                        <h2 style="font-size:18px; margin-bottom:16px;">Comandos Fijos</h2>
+                        <div class="fixed-cmd-card">
+                            <strong>busco.[código]</strong>
+                            <span>Busca código y descripción en el sistema</span>
+                            <br><code>busco.CF9323</code>
+                        </div>
+                        <div class="fixed-cmd-card">
+                            <strong>costo.[código]</strong>
+                            <span>Consulta stock y precio con IVA de un código</span>
+                            <br><code>costo.CF9323</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic category tabs (generated by JS) -->
+                <div id="category-tabs-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="qrcode-browser.min.js"></script>
+    <script>
+        // Tab switching
+        function switchTab(tabId) {
+            // Deactivate all sidebar tabs
+            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+            // Activate clicked tab
+            const tabBtn = document.querySelector(`.sidebar-tab[data-tab="${tabId}"]`);
+            if (tabBtn) tabBtn.classList.add('active');
+            // Hide all panes
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            // Show target pane
+            const pane = document.getElementById(`tab-${tabId}`);
+            if (pane) pane.classList.add('active');
+        }
+
+        // Custom titlebar window controls
+        document.getElementById('titlebar-min').addEventListener('click', () => window.electronAPI.windowMinimize());
+        document.getElementById('titlebar-max').addEventListener('click', () => window.electronAPI.windowMaximize());
+        document.getElementById('titlebar-close').addEventListener('click', () => window.electronAPI.windowClose());
+    </script>
+    <script src="electron-ui.js"></script>
+</body>
+</html>

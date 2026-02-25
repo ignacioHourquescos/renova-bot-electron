@@ -1,0 +1,68 @@
+========================================
+  RENOVA BOT - INTERFAZ ELECTRON
+========================================
+
+INSTALACION:
+------------
+1. Instala las dependencias (incluye Electron):
+   npm install
+
+2. Ejecuta la aplicación Electron:
+   npm run electron
+
+O en modo desarrollo:
+   npm run electron:dev
+
+CARACTERISTICAS:
+---------------
+- Interfaz gráfica moderna y fácil de usar
+- Botones para controlar el bot:
+  * Iniciar Bot
+  * Detener Bot
+  * Reiniciar Bot
+- Visualización de comandos disponibles
+- Logs en tiempo real del bot
+- Indicador de estado (Bot en Ejecución / Bot Detenido)
+
+USO:
+----
+OPCION 1 - Con archivo .bat (RECOMENDADO):
+1. Haz doble clic en "ejecutar-electron.bat"
+2. Se abrirá la ventana de Electron automáticamente
+3. Presiona "Iniciar Bot" para comenzar
+4. El código QR aparecerá en una ventana de consola
+5. Escanea el QR con WhatsApp
+6. El bot estará funcionando y podrás ver los logs en la interfaz
+
+OPCION 2 - Desde consola:
+1. Ejecuta: npm run electron
+2. Se abrirá una ventana con la interfaz
+3. Presiona "Iniciar Bot" para comenzar
+4. El código QR aparecerá en la terminal/consola
+5. Escanea el QR con WhatsApp
+6. El bot estará funcionando y podrás ver los logs en la interfaz
+
+NOTAS:
+------
+- La interfaz Electron es una alternativa al archivo .bat
+- El código QR sigue apareciendo en la consola (no en la interfaz)
+- Puedes usar tanto la interfaz Electron como el .bat
+- Para cerrar, simplemente cierra la ventana de Electron
+
+ARCHIVOS:
+---------
+- ejecutar-electron.bat - Ejecuta la aplicación Electron (haz doble clic aquí)
+- ejecutar-electron.vbs - Versión sin mostrar consola (recomendado)
+- electron-main.js - Proceso principal de Electron
+- electron-preload.js - Bridge de seguridad
+- electron-ui.html - Interfaz de usuario
+- electron-ui.js - Lógica de la interfaz
+
+NOTA IMPORTANTE:
+----------------
+- La primera vez que ejecutes el .bat, instalará las dependencias automáticamente
+- Si Electron no está instalado, se instalará automáticamente
+- Puedes usar el .bat en lugar de abrir la consola manualmente
+
+========================================
+

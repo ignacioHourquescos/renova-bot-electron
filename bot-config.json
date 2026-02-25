@@ -1,0 +1,264 @@
+{
+  "kits": [
+    "KIT FIAT MOBI",
+    "KIT CLIO K4M",
+    "KIT RENAULT K7M",
+    "KIT GOL TREND",
+    "KIT CORSA",
+    "KIT CHEVROLET VARIOS",
+    "KIT HILUX",
+    "KIT NEW ETIOS",
+    "KIT FORD FOCUS"
+  ],
+  "refrigerantes": [
+    {
+      "code": ">>VALVOLINE",
+      "shortTitle": null,
+      "discount": null,
+      "finalPrice": null,
+      "locked": false
+    },
+    {
+      "code": "04ZN004",
+      "shortTitle": "Zerex 100% Rojo x 4L",
+      "discount": 10,
+      "finalPrice": 29990.25
+    },
+    {
+      "code": "06ZX040",
+      "shortTitle": "Zerex 100% Rojo x 1L",
+      "discount": 10,
+      "finalPrice": 8499.6
+    },
+    {
+      "code": "01ZN090",
+      "shortTitle": "Zerex 50%/50% Rojo 19L",
+      "discount": null,
+      "finalPrice": 96000.01
+    },
+    {
+      "code": "06ZX030",
+      "shortTitle": "Zerex 100% Verde 1L",
+      "discount": 10,
+      "finalPrice": 7750.43
+    },
+    {
+      "code": "06ZX050",
+      "shortTitle": "Zerex 100% Amarillo4L",
+      "discount": 10,
+      "finalPrice": 7999.95
+    },
+    {
+      "code": "01ZN878",
+      "shortTitle": "Zerex 50%/50% Verde19L",
+      "discount": null,
+      "finalPrice": 83700.03
+    },
+    {
+      "code": ">>TOTAL",
+      "shortTitle": null,
+      "discount": null,
+      "finalPrice": null
+    },
+    {
+      "code": "GLACELF/AMA/1",
+      "shortTitle": "Glacelf 100% Amarillo 1L",
+      "discount": 10,
+      "finalPrice": 9802.8
+    },
+    {
+      "code": "GLACELF/ROJO/1",
+      "shortTitle": "Glacelf 100% Rojo 1L",
+      "discount": 10,
+      "finalPrice": 9802.8
+    },
+    {
+      "code": "GLACELF/VERDE/1",
+      "shortTitle": "Galcenf 100% Verde 1L",
+      "discount": 10,
+      "finalPrice": 5385.58
+    },
+    {
+      "code": ">>PETRONAS",
+      "shortTitle": null,
+      "discount": null,
+      "finalPrice": null
+    },
+    {
+      "code": "BALDE/PARAFLU VERDE",
+      "shortTitle": "Paraflu 100% Verde 20L",
+      "discount": null,
+      "finalPrice": 4602.33
+    },
+    {
+      "code": "PARAFLU/AMARILLO",
+      "shortTitle": "Paraflu 100% Amarillo 1L",
+      "discount": 10,
+      "finalPrice": 7544.67
+    },
+    {
+      "code": "PARAFLU/ROJO",
+      "shortTitle": "Paraflu 100% Rojo 1L",
+      "discount": 10,
+      "finalPrice": 7450.36
+    },
+    {
+      "code": "PARAFLU/VERDE",
+      "shortTitle": "Paraflu 100% Verde 205L",
+      "discount": 10,
+      "finalPrice": 5675.13
+    }
+  ],
+  "lubri": [
+    {
+      "code": "8100/5",
+      "discount": 10,
+      "finalPrice": 56011.34
+    },
+    {
+      "code": "4100/5",
+      "discount": 10,
+      "finalPrice": 47084.43
+    }
+  ],
+  "tambor": [
+    ">>VAVLOLINE",
+    "01VA486",
+    "01VA156",
+    "01VA580",
+    "01VA164",
+    "01VA509",
+    "01VA500",
+    "01VA173",
+    ">>YPF",
+    "YPF/5W30FE/205",
+    ">>PETRONAS",
+    "TAMBOR/SYNTIUM1000/10W40",
+    "TAMBOR/SYNTIUM3000/5W30",
+    "TAMBOR/SYNTIUM3000/5W40",
+    "TAMBOR/URANIA3000/15W40",
+    "TAMBOR/MACH5/15W40",
+    "TAMBOR/URANIA1000/15W40",
+    ">>PUMA LASAU",
+    "LA/15W40/205",
+    "PE/HD15W40/205",
+    "LA/5W30/205",
+    "PE/5W40/205",
+    "LA/10W40/205",
+    {
+      "code": "04VA153",
+      "shortTitle": "Premium. Prot 10W40 MYA",
+      "discount": null
+    },
+    {
+      "code": "asdsad",
+      "shortTitle": null,
+      "discount": null
+    },
+    {
+      "code": "01VA486",
+      "shortTitle": "PREMIUM PROT. 5W30 | 205L",
+      "discount": null
+    }
+  ],
+  "bidon": [],
+  "semi": [
+    {
+      "code": "4100/10W40/PROTECT/5",
+      "shortTitle": "MOTUL PROTECT 10W40 5L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTUL    "
+    },
+    {
+      "code": "04VA153",
+      "shortTitle": "Premium Prot. 10W40 3,8",
+      "discount": 10,
+      "expositionCode": "VALVO    "
+    },
+    {
+      "code": "GF/10W40/4",
+      "shortTitle": "Gulf 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "GULF      "
+    },
+    {
+      "code": "PE/10W40/4",
+      "shortTitle": "Puma 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "PUMA      "
+    },
+    {
+      "code": "MO/10W40/4",
+      "shortTitle": "MOTORCRAFT 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTROCRAFT"
+    },
+    {
+      "code": "SYNTIUM/1000/10W40/4",
+      "shortTitle": "SYNTIUM1000 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "PETRONAS  "
+    },
+    {
+      "code": "MAN/10W40/5",
+      "shortTitle": "MANNOL 10W40 5L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MANNOL    "
+    },
+    {
+      "code": "hx7/10w40/4",
+      "shortTitle": "SHELL HX7 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "SHEll    "
+    },
+    {
+      "code": "EVO700N/10W40/4",
+      "shortTitle": "ELF 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "ELF       "
+    },
+    {
+      "code": "7000N/4",
+      "shortTitle": "TOTAL 7000 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "TOTAL    "
+    },
+    {
+      "code": "CAS/10W40/4",
+      "shortTitle": "CASTROL MAGNATEC 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "CASTRO    "
+    },
+    {
+      "code": "4100/5",
+      "shortTitle": "MOTUL SYN-NERGY 10W40 5L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTUL    "
+    },
+    {
+      "code": "4100/10W40/PROTECT/4",
+      "shortTitle": "MOTUL PROTECT 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "MOTUL    "
+    },
+    {
+      "code": "OC/10W40/4",
+      "shortTitle": "OMNICRAFT 10W40 4L",
+      "discount": 10,
+      "fixedPrice": null,
+      "expositionCode": "OMNICRAFT"
+    }
+  ]
+}

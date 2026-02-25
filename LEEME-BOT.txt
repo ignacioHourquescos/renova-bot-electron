@@ -1,0 +1,53 @@
+========================================
+  RENOVA BOT - INSTRUCCIONES DE USO
+========================================
+
+PARA INICIAR EL BOT:
+--------------------
+1. Haz doble clic en el archivo "ejecutar-bot.bat"
+2. Espera a que aparezca el código QR en la ventana
+3. Abre WhatsApp en tu celular
+4. Ve a Configuración > Dispositivos vinculados
+5. Toca "Vincular un dispositivo"
+6. Escanea el código QR que aparece en la ventana
+
+IMPORTANTE:
+-----------
+- La primera vez que ejecutes el bot, se instalarán las dependencias automáticamente
+- NO cierres la ventana mientras el bot esté funcionando
+- El código QR aparece en la ventana de CMD/terminal
+- Una vez vinculado, el bot se conectará automáticamente en futuras ejecuciones
+
+COMANDOS DISPONIBLES:
+---------------------
+- .Kits - Consulta precios de todos los kits disponibles
+  Ejemplo: .Kits
+
+- .refrigerantes - Consulta precios de todos los refrigerantes
+  Ejemplo: .refrigerantes
+
+- busco.[codigo] - Busca código y descripción
+  Ejemplo: busco.CF9323
+
+- costo.[codigo] - Consulta stock y precio de un código
+  Ejemplo: costo.CF9323
+
+- hola / hi - Saludo del bot
+- ping - Prueba de conexión
+
+ARCHIVOS IMPORTANTES:
+---------------------
+- ejecutar-bot.bat - Archivo para iniciar el bot (haz doble clic aquí)
+- resetear-sesion.bat - Resetea las credenciales si hay problemas
+- src/index.ts - Código fuente del bot
+- auth_info/ - Credenciales de WhatsApp (NO compartir)
+
+SOLUCION DE PROBLEMAS:
+----------------------
+Si ves el error "Bad MAC" o problemas de conexion:
+1. Ejecuta "resetear-sesion.bat"
+2. Luego ejecuta "ejecutar-bot.bat" nuevamente
+3. Escanea el nuevo codigo QR
+
+========================================
+

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+.env
+.auth_info/
+sessions/
+*.session
+.DS_Store
+downloads/
+*.exe
+out/
