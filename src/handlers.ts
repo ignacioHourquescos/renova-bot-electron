@@ -70,10 +70,12 @@ async function handleCommand(sock: WASocket, from: string, text: string, senderI
     const cmdName = lower.substring(1);
     for (const [category, items] of Object.entries(config)) {
       if (cmdName === category.toLowerCase()) {
-        // console.log(`📋 Consulta de .${category} de ${senderInfo}`);
-        await sendSafe(sock, from, { text: `...` });
         const result = await formatCategory(category, items);
-        await sendSafe(sock, from, { text: result });
+        if (result.imageBuffer) {
+          await sendSafe(sock, from, { image: result.imageBuffer });
+        } else {
+          await sendSafe(sock, from, { text: result.text });
+        }
         return true;
       }
     }

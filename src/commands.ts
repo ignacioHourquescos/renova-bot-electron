@@ -1,4 +1,5 @@
 import { CategoryItem, getItemCode } from './config.js';
+import { generatePriceListImage, SectionImg } from './price-image.js';
 
 const API_URL = 'https://renovaapi-production.up.railway.app';
 
@@ -96,13 +97,16 @@ function formatWhatsAppPriceList(rows: PriceRow[]): string {
   return lines.join('\n');
 }
 
+export interface CategoryResult {
+  imageBuffer: Buffer | null;
+  text: string;
+}
+
 /**
  * Formatea los precios de una categoría.
- * Llama a la API para obtener precios en tiempo real.
- * Genera mensaje con columnas alineadas en fuente monoespaciada.
+ * Genera imagen PNG + texto de fallback.
  */
-export async function formatCategory(categoryName: string, items: (string | CategoryItem)[]): Promise<string> {
-  // Intentar cargar precios de la API
+export async function formatCategory(categoryName: string, items: (string | CategoryItem)[]): Promise<CategoryResult> {
   let priceMap: Map<string, PriceEntry> | null = null;
   try {
     priceMap = await fetchPriceMap();
@@ -110,7 +114,6 @@ export async function formatCategory(categoryName: string, items: (string | Cate
     console.error('No se pudo consultar la API:', error);
   }
 
-  // Estructura: secciones separadas por headers
   interface Section {
     header: string | null;
     rows: PriceRow[];
@@ -124,7 +127,6 @@ export async function formatCategory(categoryName: string, items: (string | Cate
     const code = getItemCode(item);
     const isObject = typeof item === 'object' && item !== null;
 
-    // Encabezados de sección (>>NOMBRE)
     if (code.startsWith('>>')) {
       currentSection = { header: code.substring(2), rows: [] };
       sections.push(currentSection);
@@ -137,12 +139,9 @@ export async function formatCategory(categoryName: string, items: (string | Cate
 
     let priceStr = 'Sin precio';
 
-    // 1) Precio fijo definido en Electron
     if (fixedPrice != null && fixedPrice > 0) {
       priceStr = `$${formatPrice(fixedPrice)}`;
-    }
-    // 2) Precio de la API en tiempo real
-    else if (priceMap) {
+    } else if (priceMap) {
       const entry = priceMap.get(code.toUpperCase());
       if (entry) {
         const precio = calcFinalPrice(entry.pr, discount);
@@ -150,25 +149,16 @@ export async function formatCategory(categoryName: string, items: (string | Cate
       }
     }
 
-    currentSection.rows.push({ 
-      desc: displayName,
-      price: priceStr
-    });
+    currentSection.rows.push({ desc: displayName, price: priceStr });
   }
 
-  // Armar mensaje final
+  // --- Text fallback ---
   const parts: string[] = [];
   let isFirstSection = true;
-
   for (const section of sections) {
     if (section.rows.length === 0 && !section.header) continue;
     if (section.header) {
-      // Doble salto de línea antes de cada subtítulo (excepto el primero)
-      if (!isFirstSection) {
-        parts.push('');
-        parts.push('');
-      }
-      // Subtítulos en negrita con salto de línea después
+      if (!isFirstSection) { parts.push(''); parts.push(''); }
       parts.push(`*${section.header}*`);
       parts.push('');
       isFirstSection = false;
@@ -178,8 +168,23 @@ export async function formatCategory(categoryName: string, items: (string | Cate
       isFirstSection = false;
     }
   }
+  const text = parts.join('\n');
 
-  return parts.join('\n');
+  // --- Image ---
+  let imageBuffer: Buffer | null = null;
+  try {
+    const imgSections: SectionImg[] = sections
+      .filter(s => s.rows.length > 0 || s.header)
+      .map(s => ({ header: s.header, rows: s.rows }));
+
+    if (imgSections.some(s => s.rows.length > 0)) {
+      imageBuffer = generatePriceListImage(categoryName, imgSections);
+    }
+  } catch (err) {
+    console.error('Error generando imagen de precios:', err);
+  }
+
+  return { imageBuffer, text };
 }
 
 /**
