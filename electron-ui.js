@@ -646,6 +646,168 @@ async function toggleDestacado(category, index) {
     }
 }
 
+// ══════════════════════════════════════════════════════════════
+// ── Cotización ──
+// ══════════════════════════════════════════════════════════════
+let cotizacionItems = [];
+
+async function loadCotizacion() {
+    try {
+        const data = await window.electronAPI.getCotizacion();
+        cotizacionItems = data.items || [];
+        renderCotizacion();
+    } catch (e) {
+        console.error('Error cargando cotización:', e);
+    }
+}
+
+async function saveCotizacion() {
+    try {
+        await window.electronAPI.saveCotizacion({ items: cotizacionItems });
+    } catch (e) {
+        console.error('Error guardando cotización:', e);
+    }
+}
+
+function formatCotiPrice(price) {
+    const rounded = Math.round(price);
+    return rounded.toLocaleString('de-DE');
+}
+
+function renderCotizacion() {
+    const listEl = document.getElementById('coti-items-list');
+    const totalRow = document.getElementById('coti-total-row');
+    const totalValue = document.getElementById('coti-total-value');
+    const countEl = document.getElementById('coti-count');
+    const badgeEl = document.getElementById('coti-badge');
+
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    if (cotizacionItems.length === 0) {
+        listEl.innerHTML = '<div class="coti-empty">No hay items. Busca un código para agregar artículos.</div>';
+        if (totalRow) totalRow.style.display = 'none';
+        if (countEl) countEl.textContent = '0 items';
+        if (badgeEl) badgeEl.textContent = '0';
+        return;
+    }
+
+    let total = 0;
+    cotizacionItems.forEach((item, index) => {
+        total += item.price || 0;
+        const div = document.createElement('div');
+        div.className = 'coti-item';
+        div.innerHTML = `
+            <span class="coti-item-index">${index + 1}</span>
+            <span class="coti-item-desc" title="${item.description}">${item.description}</span>
+            <span class="coti-item-code">${item.code}</span>
+            <span class="coti-item-price">$${formatCotiPrice(item.price)}</span>
+            <button class="btn-remove" onclick="removeCotiItem(${index})" title="Eliminar">✕</button>
+        `;
+        listEl.appendChild(div);
+    });
+
+    if (totalRow) totalRow.style.display = 'flex';
+    if (totalValue) totalValue.textContent = `$${formatCotiPrice(total)}`;
+    if (countEl) countEl.textContent = `${cotizacionItems.length} items`;
+    if (badgeEl) badgeEl.textContent = cotizacionItems.length;
+}
+
+async function searchForCotizacion() {
+    const input = document.getElementById('coti-search-input');
+    const btn = document.getElementById('coti-search-btn');
+    const codigo = input.value.trim();
+    if (!codigo) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Buscando...';
+
+    try {
+        const result = await window.electronAPI.searchArticulo(codigo);
+        if (result.success && result.articles.length > 0) {
+            openCotiModal(result.articles);
+        } else {
+            openCotiModal([], result.message || 'No se encontraron resultados');
+        }
+    } catch (e) {
+        openCotiModal([], 'Error de conexión');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Buscar';
+    }
+}
+
+function openCotiModal(articles, errorMsg) {
+    const modal = document.getElementById('coti-modal');
+    const body = document.getElementById('coti-modal-body');
+    if (!modal || !body) return;
+
+    body.innerHTML = '';
+
+    if (errorMsg || articles.length === 0) {
+        body.innerHTML = `<div class="modal-empty">${errorMsg || 'Sin resultados'}</div>`;
+    } else {
+        for (const article of articles) {
+            const priceStr = article.price > 0 ? `$${formatCotiPrice(article.price)}` : 'Sin precio';
+            const div = document.createElement('div');
+            div.className = 'modal-item';
+            div.innerHTML = `
+                <div class="modal-item-top">
+                    <span class="modal-item-code">${article.code}</span>
+                    <span class="modal-item-stock">Stock: ${article.stock}</span>
+                    <span class="modal-item-price">${priceStr}</span>
+                </div>
+                <div class="modal-item-desc">${article.description}</div>
+            `;
+            div.addEventListener('click', () => selectCotiArticle(article));
+            body.appendChild(div);
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeCotiModal() {
+    const modal = document.getElementById('coti-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function selectCotiArticle(article) {
+    cotizacionItems.push({
+        code: article.code,
+        description: article.description,
+        price: article.price
+    });
+    closeCotiModal();
+    renderCotizacion();
+    await saveCotizacion();
+
+    const input = document.getElementById('coti-search-input');
+    if (input) { input.value = ''; input.focus(); }
+}
+
+async function removeCotiItem(index) {
+    cotizacionItems.splice(index, 1);
+    renderCotizacion();
+    await saveCotizacion();
+}
+
+async function clearCotizacion() {
+    if (cotizacionItems.length === 0) return;
+    if (!confirm('¿Limpiar toda la cotización?')) return;
+    cotizacionItems = [];
+    renderCotizacion();
+    await saveCotizacion();
+}
+
+// Cerrar modal con Escape o click fuera
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeCotiModal();
+});
+document.getElementById('coti-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'coti-modal') closeCotiModal();
+});
+
 // ── Exponer funciones globales ──
 window.addItemAsCode = addItemAsCode;
 window.addItemAsTitle = addItemAsTitle;
@@ -657,7 +819,12 @@ window.addCategory = addCategory;
 window.deleteCategory = deleteCategory;
 window.switchTab = switchTab;
 window.toggleDestacado = toggleDestacado;
+window.searchForCotizacion = searchForCotizacion;
+window.closeCotiModal = closeCotiModal;
+window.removeCotiItem = removeCotiItem;
+window.clearCotizacion = clearCotizacion;
 
 // ── Init ──
 loadConfig();
+loadCotizacion();
 addLog('Panel de control listo. Presiona "Iniciar Bot" para comenzar.', 'info');

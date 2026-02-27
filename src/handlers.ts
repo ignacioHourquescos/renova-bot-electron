@@ -1,7 +1,7 @@
 import { WASocket, DisconnectReason } from '@whiskeysockets/baileys';
 import { getPhoneNumber, getMessageText } from './helpers.js';
 import { downloadMedia, isMediaMessage } from './media.js';
-import { formatCategory, buscarCodigo, consultarCosto } from './commands.js';
+import { formatCategory, buscarCodigo, consultarCosto, formatCotizacion } from './commands.js';
 import { loadBotConfig } from './config.js';
 
 // ─── Deduplicación ──────────────────────────────────────────────────────────
@@ -62,6 +62,17 @@ async function handleCommand(sock: WASocket, from: string, text: string, senderI
       await sendSafe(sock, from, { text: '❌ Por favor, especifica un código. Ejemplo: costo.CF9323' });
       return true;
     }
+  }
+
+  // Comando .coti → enviar cotización armada en Electron
+  if (lower === '.coti') {
+    const cotiText = formatCotizacion();
+    if (cotiText) {
+      await sendSafe(sock, from, { text: cotiText });
+    } else {
+      await sendSafe(sock, from, { text: '❌ No hay cotización armada. Armala desde el panel de Electron.' });
+    }
+    return true;
   }
 
   // Comandos dinámicos de categorías (desde bot-config.json)

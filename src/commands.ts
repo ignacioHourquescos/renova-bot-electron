@@ -1,3 +1,5 @@
+import { resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
 import { CategoryItem, getItemCode } from './config.js';
 import { generatePriceListImage, SectionImg } from './price-image.js';
 
@@ -241,6 +243,41 @@ export async function buscarCodigo(codigo: string): Promise<string> {
   } catch (error) {
     console.error('Error al buscar código:', error);
     return `❌ Error al consultar el sistema. Intenta más tarde.`;
+  }
+}
+
+/**
+ * Lee cotizacion.json y formatea el mensaje para WhatsApp.
+ * Retorna null si la cotización está vacía.
+ */
+export function formatCotizacion(): string | null {
+  try {
+    const cotizacionPath = resolve('./cotizacion.json');
+    if (!existsSync(cotizacionPath)) return null;
+
+    const raw = readFileSync(cotizacionPath, 'utf-8');
+    const data = JSON.parse(raw);
+    const items: { code: string; description: string; price: number }[] = data.items || [];
+
+    if (items.length === 0) return null;
+
+    const lines: string[] = [];
+    let total = 0;
+
+    for (const item of items) {
+      lines.push(item.description.toUpperCase());
+      lines.push(`*$${formatPrice(item.price)}*`);
+      lines.push('');
+      total += item.price || 0;
+    }
+
+    lines.push('───────────────');
+    lines.push(`*TOTAL $${formatPrice(total)}*`);
+
+    return lines.join('\n');
+  } catch (error) {
+    console.error('Error al leer cotización:', error);
+    return null;
   }
 }
 

@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "code": "LA1098",
+      "description": "VW SURAN -FOX",
+      "price": 5145
+    },
+    {
+      "code": "PH5548",
+      "description": "VW SURAN, FOX, Gol (mot. 1000 c.c.).",
+      "price": 10013
+    },
+    {
+      "code": "19347807",
+      "description": "Originales GM - VW SURAN - GOLD TREND",
+      "price": 9601
+    },
+    {
+      "code": "8100/5",
+      "description": "8100 X-CESS GEN2 5W40 5L",
+      "price": 62235
+    },
+    {
+      "code": "G10147",
+      "description": "VW Golf, Bora (4 Bar)",
+      "price": 61714
+    }
+  ]
+}

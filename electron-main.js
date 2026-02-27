@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, net } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -75,6 +75,9 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+
+  // Pre-cachear lista de precios en background para que la primera búsqueda sea rápida
+  fetchPriceList().catch(() => {});
 });
 
 app.on('window-all-closed', () => {
@@ -375,4 +378,97 @@ ipcMain.handle('get-config', async () => {
 ipcMain.handle('save-config', async (event, config) => {
   const success = writeConfig(config);
   return { success, message: success ? 'Configuración guardada' : 'Error al guardar' };
+});
+
+// ---- Cotización handlers ----
+const API_URL = 'https://renovaapi-production.up.railway.app';
+const cotizacionPath = path.join(__dirname, 'cotizacion.json');
+let priceListCache = null;
+let priceListCacheTime = 0;
+const PRICE_CACHE_TTL = 60000;
+
+async function fetchPriceList() {
+  const now = Date.now();
+  if (priceListCache && (now - priceListCacheTime) < PRICE_CACHE_TTL) {
+    return priceListCache;
+  }
+  const response = await net.fetch(`${API_URL}/obtenerListadoArticulos`);
+  const articles = await response.json();
+  const map = {};
+  for (const a of articles) {
+    if (a.id && a.pr != null) {
+      map[a.id.toUpperCase()] = { pr: Number(a.pr), d: a.d || '' };
+    }
+  }
+  priceListCache = map;
+  priceListCacheTime = now;
+  return map;
+}
+
+ipcMain.handle('search-articulo', async (event, codigo) => {
+  try {
+    // Ambas llamadas en paralelo para no sumar tiempos de espera
+    const [articleResponse, priceMap] = await Promise.all([
+      net.fetch(`${API_URL}/obtenerArticulo/${codigo.toUpperCase()}`),
+      fetchPriceList().catch(() => ({}))
+    ]);
+
+    if (!articleResponse.ok) {
+      return { success: false, articles: [], message: 'No se encontró el código' };
+    }
+    const articles = await articleResponse.json();
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return { success: false, articles: [], message: 'No se encontraron artículos' };
+    }
+
+    const withStock = articles.filter(a => {
+      const stock = a.CANT_STOCK || a.CANT_STO || a.stock || 0;
+      return stock > 0;
+    });
+
+    if (withStock.length === 0) {
+      return { success: false, articles: [], message: 'No hay artículos con stock' };
+    }
+
+    const result = withStock.map(a => {
+      const code = a.COD_ARTICULO || a.codigo || '';
+      const description = a.DESCRIP_ARTI || a.descripcion || a.d || '';
+      const stock = a.CANT_STOCK || a.CANT_STO || a.stock || 0;
+      let price = 0;
+      const entry = priceMap[code.toUpperCase()];
+      if (entry) price = Math.round(entry.pr * 1.21);
+      return { code, description, stock, price };
+    });
+
+    return { success: true, articles: result };
+  } catch (error) {
+    return { success: false, articles: [], message: error.message };
+  }
+});
+
+function readCotizacion() {
+  try {
+    if (fs.existsSync(cotizacionPath)) {
+      return JSON.parse(fs.readFileSync(cotizacionPath, 'utf-8'));
+    }
+  } catch (e) { /* ignore */ }
+  return { items: [] };
+}
+
+function writeCotizacion(data) {
+  try {
+    fs.writeFileSync(cotizacionPath, JSON.stringify(data, null, 2), 'utf-8');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+ipcMain.handle('get-cotizacion', async () => {
+  return readCotizacion();
+});
+
+ipcMain.handle('save-cotizacion', async (event, data) => {
+  const success = writeCotizacion(data);
+  return { success };
 });

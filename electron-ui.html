@@ -680,6 +680,348 @@
             font-family: 'Courier New', monospace;
             font-size: 12px;
         }
+
+        /* ── Cotización tab ── */
+        .cotizacion-pane {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .cotizacion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .cotizacion-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .cotizacion-header h2 span {
+            color: #999;
+            font-size: 13px;
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        .btn-clear-coti {
+            background: none;
+            border: 1px solid #cc0000;
+            color: #cc0000;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 6px 14px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .btn-clear-coti:hover {
+            background: #cc0000;
+            color: white;
+        }
+
+        .cotizacion-search-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+
+        .cotizacion-search-row input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .cotizacion-search-row input:focus {
+            border-color: #1a1a1a;
+        }
+
+        .cotizacion-search-row .btn-search {
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .cotizacion-search-row .btn-search:hover {
+            background: #333;
+        }
+
+        .cotizacion-search-row .btn-search:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .cotizacion-items-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            min-height: 0;
+        }
+
+        .cotizacion-items-list::-webkit-scrollbar { width: 6px; }
+        .cotizacion-items-list::-webkit-scrollbar-track { background: #f5f5f5; }
+        .cotizacion-items-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+        .coti-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            gap: 12px;
+            transition: background 0.1s;
+        }
+
+        .coti-item:hover {
+            background: #fafafa;
+        }
+
+        .coti-item:last-child {
+            border-bottom: none;
+        }
+
+        .coti-item-index {
+            color: #bbb;
+            font-size: 11px;
+            width: 20px;
+            text-align: right;
+            flex-shrink: 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .coti-item-desc {
+            flex: 1;
+            font-size: 13px;
+            color: #1a1a1a;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .coti-item-code {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #888;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .coti-item-price {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            flex-shrink: 0;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .coti-item .btn-remove {
+            background: none;
+            border: none;
+            color: #cc0000;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0.4;
+            transition: opacity 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .coti-item .btn-remove:hover {
+            opacity: 1;
+            background: #fff0f0;
+        }
+
+        .coti-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: #bbb;
+            font-size: 13px;
+        }
+
+        .cotizacion-total-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 14px 14px;
+            border-top: 2px solid #1a1a1a;
+            margin-top: 12px;
+            flex-shrink: 0;
+            gap: 12px;
+        }
+
+        .cotizacion-total-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .cotizacion-total-value {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        /* ── Modal overlay ── */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .modal-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #999;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+
+        .modal-close-btn:hover {
+            background: #f0f0f0;
+            color: #1a1a1a;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .modal-body::-webkit-scrollbar { width: 6px; }
+        .modal-body::-webkit-scrollbar-track { background: #f5f5f5; }
+        .modal-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+        .modal-item {
+            display: flex;
+            flex-direction: column;
+            padding: 12px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.1s;
+            gap: 4px;
+        }
+
+        .modal-item:hover {
+            background: #f0f7ff;
+        }
+
+        .modal-item:last-child {
+            border-bottom: none;
+        }
+
+        .modal-item-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-item-code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a1a;
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .modal-item-stock {
+            font-size: 11px;
+            color: #2d8a2d;
+            font-weight: 500;
+        }
+
+        .modal-item-price {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-left: auto;
+        }
+
+        .modal-item-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.3;
+        }
+
+        .modal-empty {
+            padding: 30px 20px;
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .modal-loading {
+            padding: 30px 20px;
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -724,6 +1066,14 @@
                     </button>
                 </div>
                 <div class="sidebar-section">
+                    <div class="sidebar-section-title">Herramientas</div>
+                    <button class="sidebar-tab" data-tab="cotizacion" onclick="switchTab('cotizacion')">
+                        <span class="tab-icon">📝</span>
+                        <span class="tab-label">Cotización</span>
+                        <span class="tab-badge" id="coti-badge">0</span>
+                    </button>
+                </div>
+                <div class="sidebar-section">
                     <div class="sidebar-section-title">Categorías</div>
                     <div id="sidebar-categories"></div>
                 </div>
@@ -758,12 +1108,48 @@
                             <span>Consulta stock y precio con IVA de un código</span>
                             <br><code>costo.CF9323</code>
                         </div>
+                        <div class="fixed-cmd-card">
+                            <strong>.coti</strong>
+                            <span>Envía la cotización armada en el panel a la conversación</span>
+                            <br><code>.coti</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cotización tab -->
+                <div class="tab-pane" id="tab-cotizacion">
+                    <div class="cotizacion-pane">
+                        <div class="cotizacion-header">
+                            <h2>Cotización <span id="coti-count">0 items</span></h2>
+                            <button class="btn-clear-coti" onclick="clearCotizacion()">Limpiar todo</button>
+                        </div>
+                        <div class="cotizacion-search-row">
+                            <input type="text" id="coti-search-input" placeholder="Buscar código..."
+                                onkeypress="if(event.key==='Enter') searchForCotizacion()">
+                            <button class="btn-search" id="coti-search-btn" onclick="searchForCotizacion()">🔍 Buscar</button>
+                        </div>
+                        <div class="cotizacion-items-list" id="coti-items-list"></div>
+                        <div class="cotizacion-total-row" id="coti-total-row" style="display:none">
+                            <span class="cotizacion-total-label">TOTAL</span>
+                            <span class="cotizacion-total-value" id="coti-total-value">$0</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Dynamic category tabs (generated by JS) -->
                 <div id="category-tabs-container"></div>
             </div>
+
+        <!-- Modal para resultados de búsqueda -->
+        <div class="modal-overlay" id="coti-modal" style="display:none">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Seleccionar artículo</h3>
+                    <button class="modal-close-btn" onclick="closeCotiModal()">✕</button>
+                </div>
+                <div class="modal-body" id="coti-modal-body"></div>
+            </div>
+        </div>
         </div>
     </div>
 
