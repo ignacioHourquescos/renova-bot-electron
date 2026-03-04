@@ -1,29 +1,54 @@
 {
   "items": [
     {
-      "code": "LA1098",
-      "description": "VW SURAN -FOX",
-      "price": 5145
+      "code": "04VA511",
+      "description": "PREMIUM BLUE 7800 15W40 | 3,785L",
+      "price": 28952,
+      "quantity": 1,
+      "discount": 10,
+      "fixedPrice": null
     },
     {
-      "code": "PH5548",
-      "description": "VW SURAN, FOX, Gol (mot. 1000 c.c.).",
-      "price": 10013
+      "code": "04VA502",
+      "description": "PREMIUM BLUE 7700 15W40 | 3,785L",
+      "price": 28589,
+      "quantity": 1,
+      "discount": 10,
+      "fixedPrice": null
     },
     {
-      "code": "19347807",
-      "description": "Originales GM - VW SURAN - GOLD TREND",
-      "price": 9601
+      "code": "01VA173",
+      "description": "ALL FLEET MAX 15W40 SF CD | 205L",
+      "price": 699000,
+      "quantity": 1,
+      "discount": null,
+      "fixedPrice": null
     },
     {
-      "code": "8100/5",
-      "description": "8100 X-CESS GEN2 5W40 5L",
-      "price": 62235
+      "code": "01VA509",
+      "description": "PREMIUM BLUE 7800 15W40 CI4 SL MB 8.3 | 205L",
+      "price": 950000,
+      "quantity": 1,
+      "discount": null,
+      "fixedPrice": null
     },
     {
-      "code": "G10147",
-      "description": "VW Golf, Bora (4 Bar)",
-      "price": 61714
+      "code": "01VA500",
+      "description": "PREMIUM BLUE 7700 15W40 CH4 SJ MB 228.1 | 205L",
+      "price": 875000,
+      "quantity": 1,
+      "discount": null,
+      "fixedPrice": null
+    },
+    {
+      "code": "PE/10W40/4",
+      "description": "PUMA EXTRA GD 10W40 | 4 X 4L",
+      "price": 27647,
+      "quantity": 1,
+      "discount": 10,
+      "fixedPrice": null
     }
-  ]
+  ],
+  "mode": "presupuesto",
+  "listId": "0"
 }

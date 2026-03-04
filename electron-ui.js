@@ -200,6 +200,7 @@ function renderCategoryPanes() {
                         onkeypress="if(event.key==='Enter') addItemAsCode('${category}')">
                     <button class="btn-add" onclick="addItemAsCode('${category}')">+ Código</button>
                     <button class="btn-add btn-title" onclick="addItemAsTitle('${category}')">+ Título</button>
+                    <button class="btn-add btn-kit" onclick="addKitItem('${category}')">+ Kit</button>
                 </div>
                 <div class="category-save-msg" id="${category}-save-msg"></div>
             </div>
@@ -291,6 +292,142 @@ async function handleDrop(e, category, toIndex) {
     await saveConfig(category);
 }
 
+// ── Kit item helpers ──
+function isKitItem(item) {
+    return typeof item === 'object' && item !== null && Array.isArray(item.articles);
+}
+
+function formatKitPrice(price) {
+    return Math.round(price).toLocaleString('de-DE');
+}
+
+async function fetchKitPrice(category, index) {
+    const item = currentConfig[category]?.[index];
+    if (!isKitItem(item)) return;
+
+    const codes = (item.articles || []).filter(c => c && c.trim());
+    const tierNames = ['basico', 'completo', 'full'];
+    for (const tn of tierNames) {
+        const el = document.getElementById(`kit-tier-${tn}-${category}-${index}`);
+        if (el) { el.textContent = '...'; el.className = 'kit-tier-price loading'; }
+    }
+
+    try {
+        const [priceResult, stockResult] = await Promise.all([
+            window.electronAPI.getArticlesPrice(codes),
+            window.electronAPI.getArticlesStock(codes)
+        ]);
+        const stocks = stockResult.success ? (stockResult.stocks || {}) : {};
+        if (priceResult.success && codes.length > 0) {
+            updateKitPriceDisplay(category, index, priceResult.total, priceResult.details, stocks);
+        } else {
+            updateKitPriceDisplay(category, index, null, [], stocks);
+        }
+    } catch (e) {
+        updateKitPriceDisplay(category, index, null, [], {});
+    }
+}
+
+function roundUpTen(n) {
+    return Math.ceil(n / 10) * 10;
+}
+
+function updateKitPriceDisplay(category, index, total, details, stocks) {
+    stocks = stocks || {};
+
+    const item = currentConfig[category]?.[index];
+    const arts = item?.articles || ['', '', '', ''];
+
+    const tierCounts = [2, 3, 4];
+    const tierNames = ['basico', 'completo', 'full'];
+
+    for (let t = 0; t < 3; t++) {
+        const el = document.getElementById(`kit-tier-${tierNames[t]}-${category}-${index}`);
+        if (!el) continue;
+
+        let tierTotal = 0;
+        let found = false;
+        for (let a = 0; a < tierCounts[t]; a++) {
+            const code = (arts[a] || '').trim().toUpperCase();
+            if (!code) continue;
+            const detail = details.find(d => d.code === code);
+            if (detail && detail.prIva > 0) {
+                tierTotal += detail.prIva;
+                found = true;
+            }
+        }
+
+        if (found && tierTotal > 0) {
+            const rounded = roundUpTen(tierTotal);
+            el.textContent = `$${formatKitPrice(rounded)}`;
+            el.className = 'kit-tier-price';
+        } else {
+            el.textContent = '-';
+            el.className = 'kit-tier-price no-price';
+        }
+    }
+
+    for (let i = 0; i < 4; i++) {
+        const input = document.getElementById(`kit-art-${category}-${index}-${i}`);
+        const infoEl = document.getElementById(`kit-info-${category}-${index}-${i}`);
+        if (!input) continue;
+        const val = input.value.trim().toUpperCase();
+
+        if (!val) {
+            input.classList.remove('not-found', 'has-value');
+            if (infoEl) { infoEl.textContent = ''; infoEl.className = 'kit-art-info'; }
+            continue;
+        }
+
+        input.classList.add('has-value');
+        const detail = details.find(d => d.code === val);
+        const stock = stocks[val] ?? null;
+
+        if (detail && detail.prIva > 0) {
+            input.classList.remove('not-found');
+            const parts = [];
+            parts.push(`$${formatKitPrice(detail.prIva)}`);
+            if (stock != null) parts.push(stock);
+            if (infoEl) {
+                infoEl.textContent = `(${parts.join(' | ')})`;
+                infoEl.className = 'kit-art-info ok';
+            }
+        } else {
+            input.classList.add('not-found');
+            if (infoEl) {
+                infoEl.textContent = '(?)';
+                infoEl.className = 'kit-art-info err';
+            }
+        }
+    }
+}
+
+/** Actualiza precios de todos los kits de una categoría (solo se llama al cambiar de tab). */
+function fetchKitPricesForCategory(category) {
+    const items = currentConfig[category] || [];
+    items.forEach((item, index) => {
+        if (isKitItem(item)) fetchKitPrice(category, index);
+    });
+}
+
+async function handleKitArticleChange(category, index, artIndex, value) {
+    const item = currentConfig[category]?.[index];
+    if (!isKitItem(item)) return;
+
+    if (!item.articles) item.articles = ['', '', '', ''];
+    item.articles[artIndex] = value.trim();
+
+    await saveConfig(category);
+    // No auto-llamar endpoint: solo al cambiar de tab o al pulsar "Actualizar" en la fila
+}
+
+async function handleKitDescriptionChange(category, index, value) {
+    const item = currentConfig[category]?.[index];
+    if (!isKitItem(item)) return;
+    item.description = value;
+    await saveConfig(category);
+}
+
 // ── Renderizar items de una categoría ──
 function renderItems(category) {
     const container = document.getElementById(`${category}-items`);
@@ -300,8 +437,6 @@ function renderItems(category) {
     const items = currentConfig[category] || [];
     items.forEach((item, index) => {
         const div = document.createElement('div');
-        div.className = 'cat-item';
-        div.draggable = true;
         div.setAttribute('data-index', index);
         div.addEventListener('dragstart', (e) => handleDragStart(e, category, index));
         div.addEventListener('dragover', handleDragOver);
@@ -311,19 +446,93 @@ function renderItems(category) {
 
         const dragHandle = `<span class="cat-item-drag" title="Arrastrar para reordenar">⠿</span>`;
         
-        // Verificar si el item está destacado
-        const isDestacado = isItemInDestacado(item);
+        // En el tab de kits no mostramos checkboxes de destacado
+        const isKitsTab = (category === 'kits');
+        const isDestacado = isKitsTab ? false : isItemInDestacado(item);
         const checkboxId = `destacado-${category}-${index}`;
+        const checkboxHtml = isKitsTab ? '' : `<input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">`;
+
+        // ── Kit item (has articles array) ──
+        if (isKitItem(item)) {
+            div.className = 'cat-item is-kit';
+            div.draggable = true;
+            const desc = item.description || '';
+            const arts = item.articles || ['', '', '', ''];
+            while (arts.length < 4) arts.push('');
+
+            div.innerHTML = `
+                ${dragHandle}
+                <span class="cat-item-index">${index + 1}</span>
+                <input type="text" value="${desc}" placeholder="Descripción del kit..."
+                    class="kit-description-field"
+                    onchange="handleKitDescriptionChange('${category}', ${index}, this.value)">
+                <div class="kit-arts-group">
+                    <span class="kit-art-wrap">
+                        <input type="text" value="${arts[0]}" placeholder="Código 1"
+                            class="kit-article-input ${arts[0] ? 'has-value' : ''}"
+                            id="kit-art-${category}-${index}-0"
+                            onchange="handleKitArticleChange('${category}', ${index}, 0, this.value)">
+                        <span class="kit-art-info" id="kit-info-${category}-${index}-0"></span>
+                    </span>
+                    <span class="kit-art-wrap">
+                        <input type="text" value="${arts[1]}" placeholder="Código 2"
+                            class="kit-article-input ${arts[1] ? 'has-value' : ''}"
+                            id="kit-art-${category}-${index}-1"
+                            onchange="handleKitArticleChange('${category}', ${index}, 1, this.value)">
+                        <span class="kit-art-info" id="kit-info-${category}-${index}-1"></span>
+                    </span>
+                    <span class="kit-art-wrap">
+                        <input type="text" value="${arts[2]}" placeholder="Código 3"
+                            class="kit-article-input ${arts[2] ? 'has-value' : ''}"
+                            id="kit-art-${category}-${index}-2"
+                            onchange="handleKitArticleChange('${category}', ${index}, 2, this.value)">
+                        <span class="kit-art-info" id="kit-info-${category}-${index}-2"></span>
+                    </span>
+                    <span class="kit-art-wrap">
+                        <input type="text" value="${arts[3]}" placeholder="Código 4"
+                            class="kit-article-input ${arts[3] ? 'has-value' : ''}"
+                            id="kit-art-${category}-${index}-3"
+                            onchange="handleKitArticleChange('${category}', ${index}, 3, this.value)">
+                        <span class="kit-art-info" id="kit-info-${category}-${index}-3"></span>
+                    </span>
+                </div>
+                <div class="kit-prices-group" id="kit-prices-${category}-${index}">
+                    <span class="kit-tier-price loading" id="kit-tier-basico-${category}-${index}">...</span>
+                    <span class="kit-tier-price loading" id="kit-tier-completo-${category}-${index}">...</span>
+                    <span class="kit-tier-price loading" id="kit-tier-full-${category}-${index}">...</span>
+                </div>
+                <button type="button" class="btn-refresh-kit" onclick="refreshKitRow('${category}', ${index})" title="Actualizar precios de esta fila">↻</button>
+                ${checkboxHtml}
+                <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
+            `;
+
+            if (!isKitsTab) {
+                const checkbox = div.querySelector(`#${checkboxId}`);
+                if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        toggleDestacado(category, index);
+                    });
+                }
+            }
+
+            container.appendChild(div);
+            // No llamar fetchKitPrice aquí: solo al cambiar de tab o al pulsar "Actualizar" en la fila
+            return;
+        }
+
+        div.className = 'cat-item';
+        div.draggable = true;
 
         if (typeof item === 'object' && item !== null) {
             const code = item.code || '';
             const shortTitle = item.shortTitle || '';
+            const quantity = item.quantity != null && item.quantity !== '' ? item.quantity : '';
             const discount = item.discount != null ? item.discount : '';
             const fixedPrice = item.fixedPrice != null ? item.fixedPrice : '';
             const hasDiscount = discount !== '' && discount !== 0;
             const hasFixedPrice = fixedPrice !== '' && fixedPrice !== 0;
 
-            // Header items (>>MARCA)
             if (code.startsWith('>>')) {
                 div.className = 'cat-item is-header';
                 div.draggable = true;
@@ -332,7 +541,7 @@ function renderItems(category) {
                     <span class="cat-item-index">${index + 1}</span>
                     <span class="cat-item-code">${code.substring(2)}</span>
                     <span class="cat-item-fields"></span>
-                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
+                    ${checkboxHtml}
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
             } else {
@@ -346,6 +555,9 @@ function renderItems(category) {
                         <input type="text" value="${shortTitle}" placeholder="Título / Descripción"
                             class="cat-item-field field-title"
                             onchange="updateItemField('${category}', ${index}, 'shortTitle', this.value)">
+                        <input type="number" value="${quantity}" placeholder="Cant" min="1" step="1"
+                            class="cat-item-field field-quantity"
+                            onchange="handleQuantityChange('${category}', ${index}, this)">
                         <input type="number" value="${discount}" placeholder="% Dto"
                             class="cat-item-field field-discount ${hasFixedPrice ? 'field-locked' : ''}"
                             ${hasFixedPrice ? 'disabled' : ''}
@@ -355,21 +567,21 @@ function renderItems(category) {
                             ${hasDiscount ? 'disabled' : ''}
                             onchange="handleFixedPriceChange('${category}', ${index}, this)">
                     </div>
-                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
+                    ${checkboxHtml}
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
             }
             
-            // Agregar event listener al checkbox después de crear el innerHTML
-            const checkbox = div.querySelector(`#${checkboxId}`);
-            if (checkbox) {
-                checkbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    toggleDestacado(category, index);
-                });
+            if (!isKitsTab) {
+                const checkbox = div.querySelector(`#${checkboxId}`);
+                if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        toggleDestacado(category, index);
+                    });
+                }
             }
         } else {
-            // String item
             const text = String(item);
             if (text.startsWith('>>')) {
                 div.className = 'cat-item is-header';
@@ -379,7 +591,7 @@ function renderItems(category) {
                     <span class="cat-item-index">${index + 1}</span>
                     <span class="cat-item-code">${text.substring(2)}</span>
                     <span class="cat-item-fields"></span>
-                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
+                    ${checkboxHtml}
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
             } else {
@@ -388,18 +600,19 @@ function renderItems(category) {
                     <span class="cat-item-index">${index + 1}</span>
                     <span class="cat-item-code">${text}</span>
                     <span class="cat-item-fields"></span>
-                    <input type="checkbox" id="${checkboxId}" ${isDestacado ? 'checked' : ''} class="destacado-checkbox" title="Destacar">
+                    ${checkboxHtml}
                     <button class="btn-remove" onclick="removeItem('${category}', ${index})" title="Eliminar">✕</button>
                 `;
             }
             
-            // Agregar event listener al checkbox después de crear el innerHTML
-            const checkbox = div.querySelector(`#${checkboxId}`);
-            if (checkbox) {
-                checkbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    toggleDestacado(category, index);
-                });
+            if (!isKitsTab) {
+                const checkbox = div.querySelector(`#${checkboxId}`);
+                if (checkbox) {
+                    checkbox.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        toggleDestacado(category, index);
+                    });
+                }
             }
         }
 
@@ -444,6 +657,16 @@ async function updateItemField(category, index, field, value) {
     }
 }
 
+// ── Cambio de cantidad ──
+async function handleQuantityChange(category, index, input) {
+    const raw = input.value.trim();
+    const value = raw === '' ? null : parseInt(raw, 10);
+    const item = currentConfig[category]?.[index];
+    if (!item || typeof item !== 'object') return;
+    item.quantity = (value != null && !Number.isNaN(value) && value >= 1) ? value : null;
+    await saveConfig(category);
+}
+
 // ── Cambio de descuento: limpia fixedPrice y re-renderiza ──
 async function handleDiscountChange(category, index, input) {
     const value = input.value ? Number(input.value) : null;
@@ -482,7 +705,26 @@ async function addItemAsCode(category) {
     currentConfig[category].push({
         code: value,
         shortTitle: null,
+        quantity: 1,
         discount: null
+    });
+    input.value = '';
+
+    renderItems(category);
+    updateSidebarBadge(category);
+    updateCategoryHeader(category);
+    await saveConfig(category);
+}
+
+// ── Agregar item tipo kit (con descripción + hasta 4 artículos) ──
+async function addKitItem(category) {
+    const input = document.getElementById(`${category}-new-input`);
+    const value = input.value.trim();
+
+    if (!currentConfig[category]) currentConfig[category] = [];
+    currentConfig[category].push({
+        description: value || '',
+        articles: ['', '', '', '']
     });
     input.value = '';
 
@@ -562,13 +804,16 @@ async function saveConfig(category) {
 function isItemInDestacado(item) {
     if (!currentConfig.destacado) return false;
     
-    // Comparar items (string o objeto)
     return currentConfig.destacado.some(destacadoItem => {
         if (typeof item === 'string' && typeof destacadoItem === 'string') {
             return item === destacadoItem;
         }
-        if (typeof item === 'object' && typeof destacadoItem === 'object') {
-            // Comparar por código
+        // Kit items: compare by description
+        if (isKitItem(item) && isKitItem(destacadoItem)) {
+            return (item.description || '') === (destacadoItem.description || '');
+        }
+        if (typeof item === 'object' && typeof destacadoItem === 'object'
+            && !isKitItem(item) && !isKitItem(destacadoItem)) {
             const itemCode = item.code || '';
             const destacadoCode = destacadoItem.code || '';
             return itemCode === destacadoCode;
@@ -602,12 +847,15 @@ async function toggleDestacado(category, index) {
         console.log('Está en destacado:', isInDestacado);
         
         if (isInDestacado) {
-            // Quitar de destacado
             const destacadoIndex = currentConfig.destacado.findIndex(destacadoItem => {
                 if (typeof item === 'string' && typeof destacadoItem === 'string') {
                     return item === destacadoItem;
                 }
-                if (typeof item === 'object' && typeof destacadoItem === 'object') {
+                if (isKitItem(item) && isKitItem(destacadoItem)) {
+                    return (item.description || '') === (destacadoItem.description || '');
+                }
+                if (typeof item === 'object' && typeof destacadoItem === 'object'
+                    && !isKitItem(item) && !isKitItem(destacadoItem)) {
                     const itemCode = item.code || '';
                     const destacadoCode = destacadoItem.code || '';
                     return itemCode === destacadoCode;
@@ -650,11 +898,21 @@ async function toggleDestacado(category, index) {
 // ── Cotización ──
 // ══════════════════════════════════════════════════════════════
 let cotizacionItems = [];
+let cotizacionMode = 'presupuesto'; // 'presupuesto' | 'cotizacion'
+let cotizacionListId = '0'; // 0=Lista 1, 1=Lista 2, 3=Lista Normal, 4=Lista Tallerista
 
 async function loadCotizacion() {
     try {
         const data = await window.electronAPI.getCotizacion();
         cotizacionItems = data.items || [];
+        cotizacionMode = data.mode === 'cotizacion' ? 'cotizacion' : 'presupuesto';
+        const listId = data.listId;
+        cotizacionListId = listId !== undefined && listId !== null ? String(listId) : '0';
+        cotizacionItems.forEach(it => {
+            if (it.quantity == null || it.quantity < 1) it.quantity = 1;
+        });
+        updateCotiModeUI();
+        updateCotiListaSelect();
         renderCotizacion();
     } catch (e) {
         console.error('Error cargando cotización:', e);
@@ -663,15 +921,44 @@ async function loadCotizacion() {
 
 async function saveCotizacion() {
     try {
-        await window.electronAPI.saveCotizacion({ items: cotizacionItems });
+        await window.electronAPI.saveCotizacion({ items: cotizacionItems, mode: cotizacionMode, listId: cotizacionListId });
     } catch (e) {
         console.error('Error guardando cotización:', e);
     }
 }
 
+function updateCotiListaSelect() {
+    const sel = document.getElementById('coti-lista-select');
+    if (sel) sel.value = cotizacionListId;
+}
+
+function updateCotiModeUI() {
+    const presupuestoEl = document.getElementById('coti-mode-presupuesto');
+    const cotizacionEl = document.getElementById('coti-mode-cotizacion');
+    const hintEl = document.getElementById('coti-mode-hint');
+    if (presupuestoEl) presupuestoEl.checked = cotizacionMode === 'presupuesto';
+    if (cotizacionEl) cotizacionEl.checked = cotizacionMode === 'cotizacion';
+    if (hintEl) hintEl.textContent = cotizacionMode === 'presupuesto'
+        ? 'Sin cantidades ni total (todo x 1)'
+        : 'Con cantidades y total';
+}
+
 function formatCotiPrice(price) {
     const rounded = Math.round(price);
     return rounded.toLocaleString('de-DE');
+}
+
+function getCotiItemEffectivePrice(item) {
+    const base = item.price || 0;
+    if (item.fixedPrice != null && item.fixedPrice !== '') {
+        const v = Number(item.fixedPrice);
+        return !Number.isNaN(v) ? v : base;
+    }
+    if (item.discount != null && item.discount !== '') {
+        const pct = Number(item.discount);
+        if (!Number.isNaN(pct) && pct > 0) return base * (1 - pct / 100);
+    }
+    return base;
 }
 
 function renderCotizacion() {
@@ -692,22 +979,42 @@ function renderCotizacion() {
         return;
     }
 
+    const isCotizacion = cotizacionMode === 'cotizacion';
     let total = 0;
     cotizacionItems.forEach((item, index) => {
-        total += item.price || 0;
+        const effectivePrice = getCotiItemEffectivePrice(item);
+        const qty = Math.max(1, Number(item.quantity) || 1);
+        const subtotal = effectivePrice * qty;
+        total += subtotal;
+        const discount = item.discount != null ? item.discount : '';
+        const fixedPrice = item.fixedPrice != null ? item.fixedPrice : '';
+        const hasDiscount = discount !== '' && discount !== 0;
+        const hasFixedPrice = fixedPrice !== '' && fixedPrice !== 0;
         const div = document.createElement('div');
         div.className = 'coti-item';
+        const qtyInput = isCotizacion
+            ? `<input type="number" min="1" value="${qty}" class="coti-item-qty" onchange="handleCotiQuantityChange(${index}, this)">`
+            : '';
         div.innerHTML = `
             <span class="coti-item-index">${index + 1}</span>
+            ${qtyInput}
             <span class="coti-item-desc" title="${item.description}">${item.description}</span>
             <span class="coti-item-code">${item.code}</span>
-            <span class="coti-item-price">$${formatCotiPrice(item.price)}</span>
+            <input type="number" value="${discount}" placeholder="% Dto"
+                class="coti-item-field field-discount ${hasFixedPrice ? 'field-locked' : ''}"
+                ${hasFixedPrice ? 'disabled' : ''}
+                onchange="handleCotiDiscountChange(${index}, this)">
+            <input type="number" value="${fixedPrice}" placeholder="$ Fijo"
+                class="coti-item-field field-fixed-price ${hasDiscount ? 'field-locked' : ''}"
+                ${hasDiscount ? 'disabled' : ''}
+                onchange="handleCotiFixedPriceChange(${index}, this)">
+            <span class="coti-item-price">$${formatCotiPrice(isCotizacion ? subtotal : effectivePrice)}</span>
             <button class="btn-remove" onclick="removeCotiItem(${index})" title="Eliminar">✕</button>
         `;
         listEl.appendChild(div);
     });
 
-    if (totalRow) totalRow.style.display = 'flex';
+    if (totalRow) totalRow.style.display = isCotizacion ? 'flex' : 'none';
     if (totalValue) totalValue.textContent = `$${formatCotiPrice(total)}`;
     if (countEl) countEl.textContent = `${cotizacionItems.length} items`;
     if (badgeEl) badgeEl.textContent = cotizacionItems.length;
@@ -723,7 +1030,7 @@ async function searchForCotizacion() {
     btn.textContent = 'Buscando...';
 
     try {
-        const result = await window.electronAPI.searchArticulo(codigo);
+        const result = await window.electronAPI.searchArticulo(codigo, cotizacionListId);
         if (result.success && result.articles.length > 0) {
             openCotiModal(result.articles);
         } else {
@@ -776,7 +1083,10 @@ async function selectCotiArticle(article) {
     cotizacionItems.push({
         code: article.code,
         description: article.description,
-        price: article.price
+        price: article.price,
+        quantity: 1,
+        discount: null,
+        fixedPrice: null
     });
     closeCotiModal();
     renderCotizacion();
@@ -784,6 +1094,45 @@ async function selectCotiArticle(article) {
 
     const input = document.getElementById('coti-search-input');
     if (input) { input.value = ''; input.focus(); }
+}
+
+async function handleCotiDiscountChange(index, input) {
+    const value = input.value !== '' ? Number(input.value) : null;
+    const item = cotizacionItems[index];
+    if (!item) return;
+    item.discount = value;
+    if (value != null && value > 0) item.fixedPrice = null;
+    renderCotizacion();
+    await saveCotizacion();
+}
+
+async function handleCotiFixedPriceChange(index, input) {
+    const value = input.value !== '' ? Number(input.value) : null;
+    const item = cotizacionItems[index];
+    if (!item) return;
+    item.fixedPrice = value;
+    if (value != null && value > 0) item.discount = null;
+    renderCotizacion();
+    await saveCotizacion();
+}
+
+async function handleCotiQuantityChange(index, input) {
+    const value = Math.max(1, Math.floor(Number(input.value)) || 1);
+    const item = cotizacionItems[index];
+    if (!item) return;
+    item.quantity = value;
+    renderCotizacion();
+    await saveCotizacion();
+}
+
+async function handleCotiModeChange(value) {
+    cotizacionMode = value === 'cotizacion' ? 'cotizacion' : 'presupuesto';
+    cotizacionItems.forEach(it => {
+        if (it.quantity == null || it.quantity < 1) it.quantity = 1;
+    });
+    updateCotiModeUI();
+    renderCotizacion();
+    await saveCotizacion();
 }
 
 async function removeCotiItem(index) {
@@ -811,18 +1160,52 @@ document.getElementById('coti-modal')?.addEventListener('click', (e) => {
 // ── Exponer funciones globales ──
 window.addItemAsCode = addItemAsCode;
 window.addItemAsTitle = addItemAsTitle;
+window.addKitItem = addKitItem;
 window.updateItemField = updateItemField;
+window.handleQuantityChange = handleQuantityChange;
 window.handleDiscountChange = handleDiscountChange;
 window.handleFixedPriceChange = handleFixedPriceChange;
+window.handleKitArticleChange = handleKitArticleChange;
+window.handleKitDescriptionChange = handleKitDescriptionChange;
 window.removeItem = removeItem;
 window.addCategory = addCategory;
 window.deleteCategory = deleteCategory;
+function switchTab(tabId) {
+    document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+    const tabBtn = document.querySelector(`.sidebar-tab[data-tab="${tabId}"]`);
+    if (tabBtn) tabBtn.classList.add('active');
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    const pane = document.getElementById(`tab-${tabId}`);
+    if (pane) pane.classList.add('active');
+    // Solo al cambiar de tab: actualizar precios de kits de esta categoría
+    if (tabId && String(tabId).startsWith('cat-')) {
+        const category = String(tabId).replace(/^cat-/, '');
+        fetchKitPricesForCategory(category);
+    }
+}
+
+function refreshKitRow(category, index) {
+    fetchKitPrice(category, index);
+}
+
 window.switchTab = switchTab;
+window.refreshKitRow = refreshKitRow;
 window.toggleDestacado = toggleDestacado;
 window.searchForCotizacion = searchForCotizacion;
 window.closeCotiModal = closeCotiModal;
 window.removeCotiItem = removeCotiItem;
 window.clearCotizacion = clearCotizacion;
+window.handleCotiDiscountChange = handleCotiDiscountChange;
+window.handleCotiFixedPriceChange = handleCotiFixedPriceChange;
+window.handleCotiQuantityChange = handleCotiQuantityChange;
+window.handleCotiModeChange = handleCotiModeChange;
+
+async function handleCotiListaChange(value) {
+    cotizacionListId = value;
+    updateCotiListaSelect();
+    await saveCotizacion();
+}
+window.handleCotiListaChange = handleCotiListaChange;
 
 // ── Init ──
 loadConfig();

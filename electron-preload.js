@@ -12,8 +12,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onBotStatus: (callback) => ipcRenderer.on('bot-status', (event, data) => callback(data)),
   onBotQrString: (callback) => ipcRenderer.on('bot-qr-string', (event, data) => callback(data)),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
-  // Cotización
-  searchArticulo: (codigo) => ipcRenderer.invoke('search-articulo', codigo),
+  // Kits / artículos
+  getArticlesStock: (codes) => ipcRenderer.invoke('get-articles-stock', codes),
+  // Cotización (listId: 0=Lista 1, 1=Lista 2, 3=Lista Normal, 4=Lista Tallerista)
+  searchArticulo: (codigo, listId) => ipcRenderer.invoke('search-articulo', codigo, listId),
+  getArticlesPrice: (codes, listId) => ipcRenderer.invoke('get-articles-price', codes, listId),
   getCotizacion: () => ipcRenderer.invoke('get-cotizacion'),
   saveCotizacion: (data) => ipcRenderer.invoke('save-cotizacion', data),
   // Window controls (custom frameless titlebar)

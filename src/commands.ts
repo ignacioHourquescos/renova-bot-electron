@@ -1,7 +1,7 @@
 import { resolve } from 'path';
 import { existsSync, readFileSync } from 'fs';
-import { CategoryItem, getItemCode } from './config.js';
-import { generatePriceListImage, SectionImg } from './price-image.js';
+import { CategoryItem, KitItem, getItemCode, isKitItem } from './config.js';
+import { generatePriceListImage, SectionImg, generateKitPriceListImage, generateKitPriceListImageWithSections, KitPriceRowImg, KitSectionImg } from './price-image.js';
 
 const API_URL = 'https://renovaapi-production.up.railway.app';
 
@@ -108,12 +108,38 @@ export interface CategoryResult {
  * Formatea los precios de una categoría.
  * Genera imagen PNG + texto de fallback.
  */
-export async function formatCategory(categoryName: string, items: (string | CategoryItem)[]): Promise<CategoryResult> {
+/**
+ * Calcula el precio sumando pr de los primeros N artículos del kit * 1.21.
+ * Devuelve 0 si ningún artículo tiene precio.
+ */
+function calcKitTierPrice(articles: string[], count: number, priceMap: Map<string, PriceEntry>): number {
+  let total = 0;
+  let found = false;
+  for (let i = 0; i < Math.min(count, articles.length); i++) {
+    const code = articles[i]?.trim();
+    if (!code) continue;
+    const entry = priceMap.get(code.toUpperCase());
+    if (entry) {
+      total += entry.pr;
+      found = true;
+    }
+  }
+  return found ? Math.ceil((total * 1.21) / 10) * 10 : 0;
+}
+
+export async function formatCategory(categoryName: string, items: (string | CategoryItem | KitItem)[]): Promise<CategoryResult> {
   let priceMap: Map<string, PriceEntry> | null = null;
   try {
     priceMap = await fetchPriceMap();
   } catch (error) {
     console.error('No se pudo consultar la API:', error);
+  }
+
+  // Detect if this category has kit items
+  const hasKits = items.some(i => isKitItem(i));
+
+  if (hasKits && priceMap) {
+    return formatKitCategory(categoryName, items, priceMap);
   }
 
   interface Section {
@@ -126,6 +152,8 @@ export async function formatCategory(categoryName: string, items: (string | Cate
   sections.push(currentSection);
 
   for (const item of items) {
+    if (isKitItem(item)) continue;
+
     const code = getItemCode(item);
     const isObject = typeof item === 'object' && item !== null;
 
@@ -135,9 +163,9 @@ export async function formatCategory(categoryName: string, items: (string | Cate
       continue;
     }
 
-    const displayName = (isObject && item.shortTitle) ? item.shortTitle : code;
-    const discount = isObject ? item.discount : null;
-    const fixedPrice = isObject ? item.fixedPrice : null;
+    const displayName = (isObject && (item as CategoryItem).shortTitle) ? (item as CategoryItem).shortTitle! : code;
+    const discount = isObject ? (item as CategoryItem).discount : null;
+    const fixedPrice = isObject ? (item as CategoryItem).fixedPrice : null;
 
     let priceStr = 'Sin precio';
 
@@ -184,6 +212,112 @@ export async function formatCategory(categoryName: string, items: (string | Cate
     }
   } catch (err) {
     console.error('Error generando imagen de precios:', err);
+  }
+
+  return { imageBuffer, text };
+}
+
+/** Detecta si un ítem es un subtítulo (>>CLASICOS, >>CAMIONETAS, o objeto solo con code tipo CLASICOS). */
+function getKitSubtitle(item: string | CategoryItem | KitItem): string | null {
+  if (typeof item === 'string') {
+    if (item.startsWith('>>')) return item.slice(2).trim() || null;
+    return null;
+  }
+  if (typeof item !== 'object' || item === null || isKitItem(item)) return null;
+  const c = item as CategoryItem;
+  const code = (c.code || '').trim();
+  if (!code) return null;
+  if (code.startsWith('>>')) return code.slice(2).trim() || null;
+  // Objeto con solo code (sin shortTitle/descuento/precio) = subtítulo legacy (ej. CLASICOS en config)
+  const hasPrice = c.discount != null && c.discount !== 0 || c.fixedPrice != null && c.fixedPrice !== 0;
+  const hasShortTitle = (c.shortTitle || '').trim() !== '';
+  if (!hasPrice && !hasShortTitle) return code;
+  return null;
+}
+
+/**
+ * Formatea una categoría que contiene kits con 3 columnas de precio.
+ * Básico (arts 1+2), Completo (arts 1+2+3), Full (arts 1+2+3+4).
+ * Los ítems con ">>" (ej. >>CLASICOS, >>CAMIONETAS) se usan como subtítulos en el mensaje y en la imagen.
+ * Kits sin precio se omiten.
+ */
+async function formatKitCategory(
+  categoryName: string,
+  items: (string | CategoryItem | KitItem)[],
+  priceMap: Map<string, PriceEntry>
+): Promise<CategoryResult> {
+  const sections: KitSectionImg[] = [];
+  let currentSection: KitSectionImg = { header: null, rows: [] };
+
+  for (const item of items) {
+    const subtitle = getKitSubtitle(item);
+    if (subtitle !== null) {
+      if (currentSection.rows.length > 0) {
+        sections.push(currentSection);
+        currentSection = { header: null, rows: [] };
+      }
+      currentSection.header = subtitle;
+      continue;
+    }
+
+    if (!isKitItem(item)) continue;
+    const arts = (item.articles || []).filter(c => c && c.trim());
+    if (arts.length === 0) continue;
+
+    const basico   = calcKitTierPrice(item.articles, 2, priceMap);
+    const completo = calcKitTierPrice(item.articles, 3, priceMap);
+    const full     = calcKitTierPrice(item.articles, 4, priceMap);
+    if (basico === 0 && completo === 0 && full === 0) continue;
+
+    currentSection.rows.push({
+      desc: item.description || 'Kit',
+      basico:   basico > 0   ? `$${formatPrice(basico)}`   : '-',
+      completo: completo > 0 ? `$${formatPrice(completo)}` : '-',
+      full:     full > 0     ? `$${formatPrice(full)}`     : '-',
+    });
+  }
+  if (currentSection.rows.length > 0 || currentSection.header) {
+    sections.push(currentSection);
+  }
+
+  const allRows = sections.flatMap(s => s.rows);
+
+  // --- Text fallback (con subtítulos) ---
+  const lines: string[] = [];
+  if (allRows.length > 0) {
+    lines.push(`*${categoryName.toUpperCase()}*`);
+    lines.push('');
+    for (const sec of sections) {
+      if (sec.header) {
+        lines.push(`*${sec.header.toUpperCase()}*`);
+        lines.push('');
+      }
+      for (const row of sec.rows) {
+        lines.push(`\`${row.desc}\``);
+        const prices: string[] = [];
+        if (row.basico !== '-') prices.push(`Básico: *${row.basico}*`);
+        if (row.completo !== '-') prices.push(`Completo: *${row.completo}*`);
+        if (row.full !== '-') prices.push(`Full: *${row.full}*`);
+        lines.push(prices.join(' | '));
+      }
+      if (sec.rows.length > 0 && sec.header) lines.push('');
+    }
+  }
+  const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  // --- Image ---
+  let imageBuffer: Buffer | null = null;
+  try {
+    if (sections.some(s => s.rows.length > 0)) {
+      const hasSubtitles = sections.some(s => s.header != null);
+      if (hasSubtitles) {
+        imageBuffer = generateKitPriceListImageWithSections(categoryName, sections);
+      } else {
+        imageBuffer = generateKitPriceListImage(categoryName, allRows);
+      }
+    }
+  } catch (err) {
+    console.error('Error generando imagen de kits:', err);
   }
 
   return { imageBuffer, text };
@@ -246,8 +380,32 @@ export async function buscarCodigo(codigo: string): Promise<string> {
   }
 }
 
+interface CotiItem {
+  code?: string;
+  description: string;
+  price: number;
+  quantity?: number;
+  discount?: number | null;
+  fixedPrice?: number | null;
+}
+
+function getCotiItemEffectivePrice(item: CotiItem): number {
+  const base = item.price || 0;
+  if (item.fixedPrice != null) {
+    const v = Number(item.fixedPrice);
+    return !Number.isNaN(v) ? v : base;
+  }
+  if (item.discount != null) {
+    const pct = Number(item.discount);
+    if (!Number.isNaN(pct) && pct > 0) return base * (1 - pct / 100);
+  }
+  return base;
+}
+
 /**
  * Lee cotizacion.json y formatea el mensaje para WhatsApp.
+ * Modo presupuesto: sin cantidades (todo x 1), sin total.
+ * Modo cotización: con cantidades y total.
  * Retorna null si la cotización está vacía.
  */
 export function formatCotizacion(): string | null {
@@ -257,22 +415,40 @@ export function formatCotizacion(): string | null {
 
     const raw = readFileSync(cotizacionPath, 'utf-8');
     const data = JSON.parse(raw);
-    const items: { code: string; description: string; price: number }[] = data.items || [];
+    const items: CotiItem[] = data.items || [];
+    const mode = data.mode === 'cotizacion' ? 'cotizacion' : 'presupuesto';
 
     if (items.length === 0) return null;
 
     const lines: string[] = [];
+    lines.push('_Precios finales (IVA incluido)._');
+    lines.push('');
     let total = 0;
 
     for (const item of items) {
+      const effectivePrice = getCotiItemEffectivePrice(item);
+      const qty = Math.max(1, Number(item.quantity) || 1);
+      const subtotal = effectivePrice * qty;
+      total += subtotal;
+
+      if (item.code) {
+        lines.push(`Cód. ${item.code}`);
+      }
       lines.push(item.description.toUpperCase());
-      lines.push(`*$${formatPrice(item.price)}*`);
+      if (mode === 'cotizacion' && qty > 1) {
+        lines.push(`Cant. ${qty} → *$${formatPrice(subtotal)}*`);
+      } else if (mode === 'cotizacion') {
+        lines.push(`*$${formatPrice(subtotal)}*`);
+      } else {
+        lines.push(`*$${formatPrice(effectivePrice)}*`);
+      }
       lines.push('');
-      total += item.price || 0;
     }
 
-    lines.push('───────────────');
-    lines.push(`*TOTAL $${formatPrice(total)}*`);
+    if (mode === 'cotizacion') {
+      lines.push('───────────────');
+      lines.push(`*TOTAL $${formatPrice(total)}*`);
+    }
 
     return lines.join('\n');
   } catch (error) {

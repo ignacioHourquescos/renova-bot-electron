@@ -383,16 +383,18 @@ ipcMain.handle('save-config', async (event, config) => {
 // ---- Cotización handlers ----
 const API_URL = 'https://renovaapi-production.up.railway.app';
 const cotizacionPath = path.join(__dirname, 'cotizacion.json');
-let priceListCache = null;
-let priceListCacheTime = 0;
+const priceListCache = {};
+const priceListCacheTime = {};
 const PRICE_CACHE_TTL = 60000;
 
-async function fetchPriceList() {
+async function fetchPriceList(listId) {
+  const id = listId != null ? String(listId) : '0';
   const now = Date.now();
-  if (priceListCache && (now - priceListCacheTime) < PRICE_CACHE_TTL) {
-    return priceListCache;
+  if (priceListCache[id] && (now - (priceListCacheTime[id] || 0)) < PRICE_CACHE_TTL) {
+    return priceListCache[id];
   }
-  const response = await net.fetch(`${API_URL}/obtenerListadoArticulos`);
+  const url = `${API_URL}/obtenerListadoArticulos${id ? `?listaid=${id}` : ''}`;
+  const response = await net.fetch(url);
   const articles = await response.json();
   const map = {};
   for (const a of articles) {
@@ -400,17 +402,70 @@ async function fetchPriceList() {
       map[a.id.toUpperCase()] = { pr: Number(a.pr), d: a.d || '' };
     }
   }
-  priceListCache = map;
-  priceListCacheTime = now;
+  priceListCache[id] = map;
+  priceListCacheTime[id] = now;
   return map;
 }
 
-ipcMain.handle('search-articulo', async (event, codigo) => {
+ipcMain.handle('get-articles-price', async (event, codes, listId) => {
+  try {
+    if (!Array.isArray(codes) || codes.length === 0) {
+      return { success: false, total: 0, details: [] };
+    }
+    const priceMap = await fetchPriceList(listId);
+    const details = [];
+    let total = 0;
+    for (const code of codes) {
+      if (!code || !code.trim()) continue;
+      const entry = priceMap[code.trim().toUpperCase()];
+      if (entry) {
+        const prIva = Math.round(entry.pr * 1.21);
+        details.push({ code: code.trim().toUpperCase(), pr: entry.pr, prIva, desc: entry.d });
+        total += prIva;
+      } else {
+        details.push({ code: code.trim().toUpperCase(), pr: 0, prIva: 0, desc: 'No encontrado' });
+      }
+    }
+    return { success: true, total, details };
+  } catch (error) {
+    return { success: false, total: 0, details: [], message: error.message };
+  }
+});
+
+ipcMain.handle('get-articles-stock', async (event, codes) => {
+  try {
+    if (!Array.isArray(codes) || codes.length === 0) {
+      return { success: true, stocks: {} };
+    }
+    const stocks = {};
+    await Promise.all(
+      codes.filter(c => c && c.trim()).map(async (code) => {
+        const c = code.trim().toUpperCase();
+        try {
+          const res = await net.fetch(`${API_URL}/obtenerArticulo/${c}`);
+          if (!res.ok) return;
+          const articles = await res.json();
+          if (!Array.isArray(articles)) return;
+          let total = 0;
+          for (const a of articles) {
+            total += a.CANT_STOCK ?? a.CANT_STO ?? a.stock ?? 0;
+          }
+          stocks[c] = total;
+        } catch (_) {}
+      })
+    );
+    return { success: true, stocks };
+  } catch (error) {
+    return { success: false, stocks: {}, message: error.message };
+  }
+});
+
+ipcMain.handle('search-articulo', async (event, codigo, listId) => {
   try {
     // Ambas llamadas en paralelo para no sumar tiempos de espera
     const [articleResponse, priceMap] = await Promise.all([
       net.fetch(`${API_URL}/obtenerArticulo/${codigo.toUpperCase()}`),
-      fetchPriceList().catch(() => ({}))
+      fetchPriceList(listId).catch(() => ({}))
     ]);
 
     if (!articleResponse.ok) {

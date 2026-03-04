@@ -8,20 +8,34 @@ import { existsSync, readFileSync } from 'fs';
 export interface CategoryItem {
   code: string;                    // Código de sistema
   shortTitle?: string | null;      // Título / Descripción corta
+  quantity?: number | null;        // Cantidad
   discount?: number | null;
   fixedPrice?: number | null;
 }
 
 /**
+ * Kit item: tiene una descripción y hasta 4 artículos cuyo precio sumado * 1.21 = precio del kit.
+ */
+export interface KitItem {
+  description: string;
+  articles: string[];
+}
+
+export function isKitItem(item: any): item is KitItem {
+  return typeof item === 'object' && item !== null && Array.isArray(item.articles);
+}
+
+/**
  * BotConfig: mapa de categorías.
  * Key = nombre del comando (ej: "kits", "refrigerantes")
- * Value = array de strings o CategoryItem.
+ * Value = array de strings, CategoryItem, o KitItem.
  */
-export type BotConfig = Record<string, (string | CategoryItem)[]>;
+export type BotConfig = Record<string, (string | CategoryItem | KitItem)[]>;
 
 /** Extrae el código de un item (string o objeto). */
-export function getItemCode(item: string | CategoryItem): string {
+export function getItemCode(item: string | CategoryItem | KitItem): string {
   if (typeof item === 'string') return item;
+  if (isKitItem(item)) return '';
   return item.code || '';
 }
 
