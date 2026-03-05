@@ -11,13 +11,13 @@ function updateStatus(running) {
     botRunning = running;
     if (running) {
         statusEl.textContent = 'Bot Prendido';
-        statusEl.className = 'header-status-value running';
+        statusEl.className = 'console-status-value running';
         btnStart.disabled = true;
         btnStop.disabled = false;
         btnRestart.disabled = false;
     } else {
         statusEl.textContent = 'Bot Detenido';
-        statusEl.className = 'header-status-value stopped';
+        statusEl.className = 'console-status-value stopped';
         btnStart.disabled = false;
         btnStop.disabled = true;
         btnRestart.disabled = true;
@@ -167,7 +167,6 @@ function formatCasosTimeAgo(iso) {
 
 function renderCasosClientList() {
     const listEl = document.getElementById('casos-client-list');
-    const countEl = document.getElementById('casos-count');
     const badgeEl = document.getElementById('casos-badge');
     if (!listEl) return;
 
@@ -183,17 +182,10 @@ function renderCasosClientList() {
                 <div class="casos-client-name">${escapeHtml(name)}</div>
                 ${showPhone ? `<div class="casos-client-phone">${escapeHtml(showPhone)}</div>` : ''}
                 <div class="casos-client-preview">${escapeHtml(c.lastMessage || '')}</div>
-                <div class="casos-client-meta">
-                    <span class="casos-client-time">${formatCasosTimeAgo(c.lastMessageTime)}</span>
-                    <div class="casos-client-badges">
-                        <span class="casos-client-badge">${c.messageCount} msg</span>
-                        ${c.noteCount > 0 ? `<span class="casos-client-badge notes">${c.noteCount} nota${c.noteCount > 1 ? 's' : ''}</span>` : ''}
-                    </div>
-                </div>
+                <span class="casos-client-time">${formatCasosTimeAgo(c.lastMessageTime)}</span>
             </div>`;
         }).join('');
     }
-    if (countEl) countEl.textContent = String(casosClientList.length);
     if (badgeEl) badgeEl.textContent = String(casosClientList.length);
 }
 
@@ -284,9 +276,21 @@ async function loadMediaElements() {
                 continue;
             }
             if (type === 'image') {
-                div.innerHTML = `<img src="${dataUrl}" class="casos-media-img" onclick="this.classList.toggle('expanded')">`;
+                div.innerHTML = `
+                    <div class="casos-image-row">
+                        <img src="${dataUrl}" class="casos-media-img" onclick="this.classList.toggle('expanded')">
+                        <button class="btn-convertir-pedido" type="button" title="Convertir imagen a pedido">Convertir a pedido</button>
+                    </div>`;
+                const btn = div.querySelector('.btn-convertir-pedido');
+                if (btn) btn.addEventListener('click', () => openImageToOrderModal(filePath));
             } else if (type === 'audio') {
-                div.innerHTML = `<audio controls src="${dataUrl}" class="casos-media-audio"></audio>`;
+                div.innerHTML = `
+                    <div class="casos-audio-row">
+                        <audio controls src="${dataUrl}" class="casos-media-audio"></audio>
+                        <button class="btn-convertir-pedido" type="button" title="Convertir audio a pedido">Convertir a pedido</button>
+                    </div>`;
+                const btn = div.querySelector('.btn-convertir-pedido');
+                if (btn) btn.addEventListener('click', () => openAudioToOrderModal(filePath));
             } else if (type === 'video') {
                 div.innerHTML = `<video controls src="${dataUrl}" class="casos-media-video"></video>`;
             } else {
@@ -378,6 +382,118 @@ window.selectCasosClient = selectCasosClient;
 window.addCasosNote = addCasosNote;
 window.deleteCasosNote = deleteCasosNote;
 
+// ── Audio a Pedido (OpenAI) ──
+let audioToOrderResult = null;
+
+async function openAudioToOrderModal(mediaPath) {
+    const modal = document.getElementById('audio-to-order-modal');
+    const body = document.getElementById('audio-to-order-modal-body');
+    const titleEl = document.getElementById('audio-to-order-modal-title');
+    if (!modal || !body || !titleEl) return;
+
+    titleEl.textContent = 'Convirtiendo audio a pedido...';
+    body.innerHTML = '<div class="modal-loading">Transcribiendo y extrayendo ítems...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        const result = await window.electronAPI.audioToOrder(mediaPath, '0');
+        audioToOrderResult = result;
+
+        if (!result.success) {
+            body.innerHTML = `<div class="modal-empty" style="color:#cc0000">${escapeHtml(result.error || 'Error desconocido')}</div>`;
+            titleEl.textContent = 'Error';
+            return;
+        }
+
+        let html = '';
+        if (result.transcript) {
+            html += `<div class="audio-order-transcript"><strong>Transcripción:</strong><p>${escapeHtml(result.transcript)}</p></div>`;
+        }
+        const items = result.rawItems || [];
+        if (result.error && items.length === 0) {
+            html += `<div class="modal-empty">${escapeHtml(result.error)}</div>`;
+        } else if (items.length > 0) {
+            html += '<div class="audio-order-items"><strong>Listado:</strong><div class="audio-order-simple-list">';
+            for (const it of items) {
+                const qty = it.quantity || 1;
+                const label = it.code || it.description_hint || '—';
+                html += `<div class="audio-order-simple-item">${escapeHtml(label)} × ${qty}</div>`;
+            }
+            html += '</div></div>';
+        } else {
+            html += '<div class="modal-empty">No se detectaron ítems de pedido.</div>';
+        }
+        body.innerHTML = html;
+        titleEl.textContent = 'Resultado';
+    } catch (e) {
+        body.innerHTML = `<div class="modal-empty" style="color:#cc0000">${escapeHtml(e.message || String(e))}</div>`;
+        titleEl.textContent = 'Error';
+    }
+}
+
+function closeAudioToOrderModal() {
+    const modal = document.getElementById('audio-to-order-modal');
+    if (modal) modal.style.display = 'none';
+    audioToOrderResult = null;
+}
+
+async function openImageToOrderModal(mediaPath) {
+    const modal = document.getElementById('audio-to-order-modal');
+    const body = document.getElementById('audio-to-order-modal-body');
+    const titleEl = document.getElementById('audio-to-order-modal-title');
+    if (!modal || !body || !titleEl) return;
+
+    titleEl.textContent = 'Analizando imagen...';
+    body.innerHTML = '<div class="modal-loading">Extrayendo ítems de la imagen...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        const result = await window.electronAPI.imageToOrder(mediaPath);
+
+        if (!result.success) {
+            body.innerHTML = `<div class="modal-empty" style="color:#cc0000">${escapeHtml(result.error || 'Error desconocido')}</div>`;
+            titleEl.textContent = 'Error';
+            return;
+        }
+
+        const items = result.rawItems || [];
+        if (items.length > 0) {
+            let html = '<div class="audio-order-items"><strong>Listado:</strong><div class="audio-order-simple-list">';
+            for (const it of items) {
+                const qty = it.quantity || 1;
+                const label = it.code || it.description_hint || '—';
+                html += `<div class="audio-order-simple-item">${escapeHtml(label)} × ${qty}</div>`;
+            }
+            html += '</div></div>';
+            body.innerHTML = html;
+        } else {
+            body.innerHTML = '<div class="modal-empty">No se detectaron ítems de pedido en la imagen.</div>';
+        }
+        titleEl.textContent = 'Resultado';
+    } catch (e) {
+        body.innerHTML = `<div class="modal-empty" style="color:#cc0000">${escapeHtml(e.message || String(e))}</div>`;
+        titleEl.textContent = 'Error';
+    }
+}
+
+async function addAudioOrderToCotizacion() {
+    if (!audioToOrderResult || !audioToOrderResult.items || audioToOrderResult.items.length === 0) return;
+    for (const it of audioToOrderResult.items) {
+        cotizacionItems.push({
+            code: it.code,
+            description: it.description,
+            price: it.price,
+            quantity: it.quantity || 1,
+            discount: null,
+            fixedPrice: null
+        });
+    }
+    closeAudioToOrderModal();
+    renderCotizacion();
+    await saveCotizacion();
+    switchTab('cotizacion');
+}
+
 // ══════════════════════════════════════════════════════════════
 // ── Gestión de configuración con tabs ──
 // ══════════════════════════════════════════════════════════════
@@ -409,6 +525,7 @@ function renderSidebarCategories() {
         const btn = document.createElement('button');
         btn.className = 'sidebar-tab';
         btn.setAttribute('data-tab', `cat-${category}`);
+        btn.setAttribute('title', `.${category}`);
         btn.onclick = () => switchTab(`cat-${category}`);
         btn.innerHTML = `
             <span class="tab-icon">📋</span>
@@ -1396,12 +1513,18 @@ async function clearCotizacion() {
     await saveCotizacion();
 }
 
-// Cerrar modal con Escape o click fuera
+// Cerrar modales con Escape o click fuera
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeCotiModal();
+    if (e.key === 'Escape') {
+        closeCotiModal();
+        closeAudioToOrderModal();
+    }
 });
 document.getElementById('coti-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'coti-modal') closeCotiModal();
+});
+document.getElementById('audio-to-order-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'audio-to-order-modal') closeAudioToOrderModal();
 });
 
 // ── Exponer funciones globales ──
@@ -1438,11 +1561,23 @@ function refreshKitRow(category, index) {
     fetchKitPrice(category, index);
 }
 
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const btn = document.getElementById('sidebar-toggle');
+    if (sidebar && btn) {
+        sidebar.classList.toggle('collapsed');
+        btn.title = sidebar.classList.contains('collapsed') ? 'Expandir menú' : 'Contraer menú';
+    }
+}
+
 window.switchTab = switchTab;
+window.toggleSidebar = toggleSidebar;
 window.refreshKitRow = refreshKitRow;
 window.toggleDestacado = toggleDestacado;
 window.searchForCotizacion = searchForCotizacion;
 window.closeCotiModal = closeCotiModal;
+window.closeAudioToOrderModal = closeAudioToOrderModal;
+window.addAudioOrderToCotizacion = addAudioOrderToCotizacion;
 window.removeCotiItem = removeCotiItem;
 window.clearCotizacion = clearCotizacion;
 window.handleCotiDiscountChange = handleCotiDiscountChange;

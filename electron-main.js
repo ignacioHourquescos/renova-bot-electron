@@ -1,5 +1,7 @@
-const { app, BrowserWindow, ipcMain, net } = require('electron');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+const { app, BrowserWindow, ipcMain, net } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
 // QR image is now generated in the renderer
@@ -642,6 +644,51 @@ const MIME_MAP = {
   '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.opus': 'audio/opus', '.wav': 'audio/wav',
   '.pdf': 'application/pdf',
 };
+
+// ---- Audio to Order (OpenAI Whisper + GPT) ----
+const { audioToOrder } = require('./lib/audio-to-order.js');
+
+// ---- Image to Order (OpenAI Vision) ----
+const { imageToOrder } = require('./lib/image-to-order.js');
+
+ipcMain.handle('audio-to-order', async (event, mediaPath, listId) => {
+  try {
+    if (!mediaPath || typeof mediaPath !== 'string') {
+      return { success: false, error: 'Ruta de audio inválida' };
+    }
+    const normalized = path.normalize(path.resolve(mediaPath.trim()));
+    const conversationsMedia = path.resolve(__dirname, 'conversations', 'media');
+    const isInside = normalized.toLowerCase().startsWith(conversationsMedia.toLowerCase());
+    if (!isInside || !fs.existsSync(normalized)) {
+      return { success: false, error: 'Archivo de audio no encontrado o ruta no permitida' };
+    }
+    const id = listId != null ? String(listId) : '0';
+    const result = await audioToOrder(normalized, id, { simple: true });
+    return result;
+  } catch (err) {
+    console.error('Error en audio-to-order:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
+
+ipcMain.handle('image-to-order', async (event, mediaPath) => {
+  try {
+    if (!mediaPath || typeof mediaPath !== 'string') {
+      return { success: false, error: 'Ruta de imagen inválida' };
+    }
+    const normalized = path.normalize(path.resolve(mediaPath.trim()));
+    const conversationsMedia = path.resolve(__dirname, 'conversations', 'media');
+    const isInside = normalized.toLowerCase().startsWith(conversationsMedia.toLowerCase());
+    if (!isInside || !fs.existsSync(normalized)) {
+      return { success: false, error: 'Archivo de imagen no encontrado o ruta no permitida' };
+    }
+    const result = await imageToOrder(normalized);
+    return result;
+  } catch (err) {
+    console.error('Error en image-to-order:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
+});
 
 ipcMain.handle('get-media-data-url', async (event, filePath) => {
   try {

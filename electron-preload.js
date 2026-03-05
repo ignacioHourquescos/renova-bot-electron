@@ -25,6 +25,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteNote: (phone, noteId) => ipcRenderer.invoke('delete-note', phone, noteId),
   onConversationMsg: (callback) => ipcRenderer.on('conversation-msg', (event, data) => callback(data)),
   getMediaDataUrl: (filePath) => ipcRenderer.invoke('get-media-data-url', filePath),
+  audioToOrder: (mediaPath, listId) => ipcRenderer.invoke('audio-to-order', mediaPath, listId),
+  imageToOrder: (mediaPath) => ipcRenderer.invoke('image-to-order', mediaPath),
   // Window controls (custom frameless titlebar)
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),

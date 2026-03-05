@@ -11,23 +11,27 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
+            background: white;
             color: #1a1a1a;
-            height: 100vh;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
         }
 
         .container {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            width: 95%;
-            max-width: 1400px;
-            height: 95vh;
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -174,12 +178,71 @@
         /* ── Sidebar (tabs) ── */
         .sidebar {
             width: 180px;
-            min-width: 180px;
+            min-width: 48px;
             background: #fafafa;
             border-right: 1px solid #e0e0e0;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            overflow-x: hidden;
+            transition: width 0.2s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 48px;
+        }
+
+        .sidebar.collapsed .sidebar-section-title,
+        .sidebar.collapsed .tab-label,
+        .sidebar.collapsed .tab-badge,
+        .sidebar.collapsed .sidebar-add-row input,
+        .sidebar.collapsed .sidebar-add-btn {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-bottom {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-tab {
+            padding: 10px;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .sidebar-add-row {
+            justify-content: center;
+        }
+
+        .sidebar-toggle {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            background: #eee;
+            color: #666;
+            cursor: pointer;
+            font-size: 14px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.15s;
+        }
+
+        .sidebar-toggle:hover {
+            background: #e0e0e0;
+        }
+
+        .sidebar.collapsed .sidebar-toggle {
+            padding: 8px;
+        }
+
+        .sidebar.collapsed .sidebar-toggle .toggle-expand {
+            display: none;
+        }
+
+        .sidebar.collapsed .sidebar-toggle .toggle-collapse {
+            display: inline;
+        }
+
+        .sidebar .sidebar-toggle .toggle-collapse {
+            display: none;
         }
 
         .sidebar-section {
@@ -327,6 +390,43 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+
+        .console-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .console-status {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .console-status-label {
+            color: #666;
+        }
+
+        .console-status-value {
+            padding: 4px 12px;
+            border-radius: 3px;
+            font-weight: 500;
+            font-size: 11px;
+        }
+
+        .console-status-value.running {
+            background: #2d8a2d;
+            color: white;
+        }
+
+        .console-status-value.stopped {
+            background: #555;
+            color: #ccc;
         }
 
         .logs {
@@ -928,6 +1028,8 @@
         .casos-client-time {
             font-size: 10px;
             color: #aaa;
+            margin-top: 4px;
+            display: block;
         }
         .casos-client-badges {
             display: flex;
@@ -1121,10 +1223,78 @@
         .casos-media-img.expanded {
             max-height: none;
         }
+        .casos-audio-row,
+        .casos-image-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
         .casos-media-audio {
             width: 100%;
             max-width: 280px;
             height: 36px;
+        }
+        .btn-convertir-pedido {
+            width: fit-content;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-convertir-pedido:hover {
+            background: #1557b0;
+        }
+        .audio-order-transcript {
+            margin-bottom: 14px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .audio-order-transcript p {
+            margin: 6px 0 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .audio-order-items ul {
+            margin: 8px 0 14px;
+            padding-left: 20px;
+            font-size: 13px;
+        }
+        .audio-order-items li {
+            margin-bottom: 14px;
+        }
+        .audio-order-simple-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .audio-order-simple-item {
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+        .btn-add-to-coti {
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            background: #2d8a2d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-add-to-coti:hover {
+            background: #247a24;
         }
         .casos-media-video {
             max-width: 100%;
@@ -1611,31 +1781,26 @@
             <div class="header-left">
                 <h1>🤖 Renova Bot</h1>
             </div>
-            <div class="header-controls">
-                <button id="btnStart" class="btn btn-start">▶️ Iniciar</button>
-                <button id="btnStop" class="btn btn-stop" disabled>⏹️ Detener</button>
-                <button id="btnRestart" class="btn btn-restart" disabled>🔄 Reiniciar</button>
-            </div>
-            <div class="header-status">
-                <span class="header-status-label">ESTADO:</span>
-                <span id="status" class="header-status-value stopped">Bot Detenido</span>
-            </div>
         </div>
 
         <div class="app-body">
             <!-- Sidebar -->
-            <div class="sidebar">
+            <div class="sidebar collapsed" id="sidebar">
+                <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Expandir menú">
+                    <span class="toggle-expand">◀ Ocultar</span>
+                    <span class="toggle-collapse">▶</span>
+                </button>
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">General</div>
-                    <button class="sidebar-tab active" data-tab="consola" onclick="switchTab('consola')">
+                    <button class="sidebar-tab" data-tab="consola" onclick="switchTab('consola')" title="Consola">
                         <span class="tab-icon">🖥️</span>
                         <span class="tab-label">Consola</span>
                     </button>
-                    <button class="sidebar-tab" data-tab="comandos" onclick="switchTab('comandos')">
+                    <button class="sidebar-tab" data-tab="comandos" onclick="switchTab('comandos')" title="Comandos">
                         <span class="tab-icon">⚡</span>
                         <span class="tab-label">Comandos</span>
                     </button>
-                    <button class="sidebar-tab" data-tab="casos" onclick="switchTab('casos')">
+                    <button class="sidebar-tab active" data-tab="casos" onclick="switchTab('casos')" title="Casos">
                         <span class="tab-icon">💬</span>
                         <span class="tab-label">Casos</span>
                         <span class="tab-badge" id="casos-badge">0</span>
@@ -1643,7 +1808,7 @@
                 </div>
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">Herramientas</div>
-                    <button class="sidebar-tab" data-tab="cotizacion" onclick="switchTab('cotizacion')">
+                    <button class="sidebar-tab" data-tab="cotizacion" onclick="switchTab('cotizacion')" title="Cotización">
                         <span class="tab-icon">📝</span>
                         <span class="tab-label">Cotización</span>
                         <span class="tab-badge" id="coti-badge">0</span>
@@ -1664,20 +1829,25 @@
             <!-- Main content -->
             <div class="main-content">
                 <!-- Console tab -->
-                <div class="tab-pane active" id="tab-consola">
+                <div class="tab-pane" id="tab-consola">
                     <div class="console-pane">
+                        <div class="console-bar">
+                            <button id="btnStart" class="btn btn-start">▶️ Iniciar</button>
+                            <button id="btnStop" class="btn btn-stop" disabled>⏹️ Detener</button>
+                            <button id="btnRestart" class="btn btn-restart" disabled>🔄 Reiniciar</button>
+                            <span class="console-status">
+                                <span class="console-status-label">ESTADO:</span>
+                                <span id="status" class="console-status-value stopped">Bot Detenido</span>
+                            </span>
+                        </div>
                         <div class="logs" id="logs"></div>
                     </div>
                 </div>
 
                 <!-- Casos (conversaciones por cliente) -->
-                <div class="tab-pane" id="tab-casos">
+                <div class="tab-pane active" id="tab-casos">
                     <div class="casos-layout">
                         <div class="casos-list-panel">
-                            <div class="casos-list-header">
-                                <h3>Clientes</h3>
-                                <span class="casos-list-count" id="casos-count">0</span>
-                            </div>
                             <div class="casos-client-list" id="casos-client-list"></div>
                         </div>
                         <div class="casos-detail-panel" id="casos-detail-panel">
@@ -1765,6 +1935,17 @@
                     <button class="modal-close-btn" onclick="closeCotiModal()">✕</button>
                 </div>
                 <div class="modal-body" id="coti-modal-body"></div>
+            </div>
+        </div>
+
+        <!-- Modal Audio a Pedido -->
+        <div class="modal-overlay" id="audio-to-order-modal" style="display:none">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3 id="audio-to-order-modal-title">Audio a pedido</h3>
+                    <button class="modal-close-btn" onclick="closeAudioToOrderModal()">✕</button>
+                </div>
+                <div class="modal-body" id="audio-to-order-modal-body"></div>
             </div>
         </div>
         </div>
