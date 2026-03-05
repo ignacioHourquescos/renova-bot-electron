@@ -162,6 +162,20 @@ function handleBotStdout(data) {
       continue;
     }
     if (clean.includes('[QR_CODE_STRING]') || clean.includes('[/QR_CODE_STRING]')) continue;
+
+    const convMatch = clean.match(/\[CONVERSATION_MSG\](.+)\[\/CONVERSATION_MSG\]/);
+    if (convMatch) {
+      try {
+        const payload = JSON.parse(convMatch[1]);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('conversation-msg', payload);
+        }
+      } catch (e) {
+        console.error('Error parsing CONVERSATION_MSG:', e);
+      }
+      continue;
+    }
+    if (clean.includes('[CONVERSATION_MSG]') || clean.includes('[/CONVERSATION_MSG]')) continue;
     if (isNoiseLine(clean)) continue;
     cleanLines.push(clean);
   }
@@ -526,4 +540,120 @@ ipcMain.handle('get-cotizacion', async () => {
 ipcMain.handle('save-cotizacion', async (event, data) => {
   const success = writeCotizacion(data);
   return { success };
+});
+
+// ---- Conversations (casos por cliente) ----
+const conversationsDir = path.join(__dirname, 'conversations');
+
+function ensureConversationsDir() {
+  if (!fs.existsSync(conversationsDir)) {
+    fs.mkdirSync(conversationsDir, { recursive: true });
+  }
+}
+
+function readConversationFile(phoneNumber) {
+  const filePath = path.join(conversationsDir, `${phoneNumber}.json`);
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error(`Error reading conversation ${phoneNumber}:`, e);
+  }
+  return { phoneNumber, pushName: '', messages: [], notes: [] };
+}
+
+function writeConversationFile(phoneNumber, data) {
+  ensureConversationsDir();
+  const filePath = path.join(conversationsDir, `${phoneNumber}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+ipcMain.handle('get-conversations-list', async () => {
+  ensureConversationsDir();
+  try {
+    const files = fs.readdirSync(conversationsDir).filter(f => f.endsWith('.json'));
+    const list = [];
+    for (const file of files) {
+      try {
+        const raw = fs.readFileSync(path.join(conversationsDir, file), 'utf-8');
+        const data = JSON.parse(raw);
+        const msgs = Array.isArray(data.messages) ? data.messages : [];
+        const notes = Array.isArray(data.notes) ? data.notes : [];
+        const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+        list.push({
+          phoneNumber: data.phoneNumber || file.replace('.json', ''),
+          pushName: data.pushName || '',
+          lastMessage: lastMsg ? lastMsg.text : '',
+          lastMessageTime: lastMsg ? lastMsg.timestamp : '',
+          messageCount: msgs.length,
+          noteCount: notes.length,
+        });
+      } catch (e) { /* skip corrupted files */ }
+    }
+    list.sort((a, b) => {
+      if (!a.lastMessageTime) return 1;
+      if (!b.lastMessageTime) return -1;
+      return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+    });
+    return list;
+  } catch (e) {
+    console.error('Error reading conversations:', e);
+    return [];
+  }
+});
+
+ipcMain.handle('get-conversation', async (event, phoneNumber) => {
+  return readConversationFile(phoneNumber);
+});
+
+ipcMain.handle('save-note', async (event, phoneNumber, noteText) => {
+  try {
+    const data = readConversationFile(phoneNumber);
+    if (!Array.isArray(data.notes)) data.notes = [];
+    data.notes.push({
+      id: `note_${Date.now()}`,
+      text: noteText,
+      timestamp: new Date().toISOString(),
+    });
+    writeConversationFile(phoneNumber, data);
+    return { success: true };
+  } catch (e) {
+    console.error('Error saving note:', e);
+    return { success: false };
+  }
+});
+
+ipcMain.handle('delete-note', async (event, phoneNumber, noteId) => {
+  try {
+    const data = readConversationFile(phoneNumber);
+    if (!Array.isArray(data.notes)) return { success: false };
+    data.notes = data.notes.filter(n => n.id !== noteId);
+    writeConversationFile(phoneNumber, data);
+    return { success: true };
+  } catch (e) {
+    return { success: false };
+  }
+});
+
+const MIME_MAP = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.mp4': 'video/mp4', '.mkv': 'video/x-matroska', '.avi': 'video/x-msvideo',
+  '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.opus': 'audio/opus', '.wav': 'audio/wav',
+  '.pdf': 'application/pdf',
+};
+
+ipcMain.handle('get-media-data-url', async (event, filePath) => {
+  try {
+    if (!filePath || !fs.existsSync(filePath)) return null;
+    const normalized = path.resolve(filePath);
+    if (!normalized.includes(path.join('conversations', 'media'))) return null;
+    const buf = fs.readFileSync(normalized);
+    const ext = path.extname(normalized).toLowerCase();
+    const mime = MIME_MAP[ext] || 'application/octet-stream';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch (e) {
+    console.error('Error reading media file:', e);
+    return null;
+  }
 });

@@ -73,25 +73,30 @@ function resolveExtension(mediaData: any, contentType: string, defaultExt: strin
 
 /**
  * Descarga y guarda un archivo multimedia recibido por WhatsApp.
+ * @param fullMessage - Mensaje completo WAMessage { key, message } (requerido por Baileys)
  */
 export async function downloadMedia(
-  message: any,
+  fullMessage: any,
   phoneNumber: string,
   messageId: string,
   sock: WASocket,
+  outputDir?: string,
 ): Promise<string | null> {
   try {
-    const typeInfo = getMediaTypeInfo(message);
+    const messageContent = fullMessage?.message || fullMessage;
+    const typeInfo = getMediaTypeInfo(messageContent);
     if (!typeInfo) return null;
 
-    const contentType = getContentType(message) || '';
+    const contentType = getContentType(messageContent) || '';
 
+    // Baileys requiere el mensaje completo con key y message
     const buffer = await downloadMediaMessage(
-      message, 'buffer', {},
+      fullMessage?.message ? fullMessage : { key: {}, message: messageContent },
+      'buffer', {},
       { reuploadRequest: sock.updateMediaMessage, logger },
     );
 
-    const mediaDir = resolve('./downloads', typeInfo.folder);
+    const mediaDir = outputDir || resolve('./downloads', typeInfo.folder);
     if (!existsSync(mediaDir)) {
       await mkdir(mediaDir, { recursive: true });
     }

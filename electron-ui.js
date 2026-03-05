@@ -132,6 +132,252 @@ window.electronAPI.getBotStatus().then(status => {
     updateStatus(status.running);
 });
 
+// ── Casos (conversaciones por cliente) ──
+let casosClientList = [];
+let casosSelectedPhone = null;
+let casosSelectedData = null;
+
+function escapeHtml(s) {
+    if (typeof s !== 'string') return '';
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+}
+
+function formatCasosTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatCasosTimeAgo(iso) {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'ahora';
+    if (mins < 60) return `hace ${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `hace ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `hace ${days}d`;
+}
+
+function renderCasosClientList() {
+    const listEl = document.getElementById('casos-client-list');
+    const countEl = document.getElementById('casos-count');
+    const badgeEl = document.getElementById('casos-badge');
+    if (!listEl) return;
+
+    if (casosClientList.length === 0) {
+        listEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#bbb;font-size:13px;">No hay conversaciones todavía.</div>';
+    } else {
+        listEl.innerHTML = casosClientList.map(c => {
+            const isActive = c.phoneNumber === casosSelectedPhone;
+            const name = c.pushName || c.phoneNumber;
+            const showPhone = c.pushName ? c.phoneNumber : '';
+            return `
+            <div class="casos-client-item${isActive ? ' active' : ''}" onclick="selectCasosClient('${escapeHtml(c.phoneNumber)}')">
+                <div class="casos-client-name">${escapeHtml(name)}</div>
+                ${showPhone ? `<div class="casos-client-phone">${escapeHtml(showPhone)}</div>` : ''}
+                <div class="casos-client-preview">${escapeHtml(c.lastMessage || '')}</div>
+                <div class="casos-client-meta">
+                    <span class="casos-client-time">${formatCasosTimeAgo(c.lastMessageTime)}</span>
+                    <div class="casos-client-badges">
+                        <span class="casos-client-badge">${c.messageCount} msg</span>
+                        ${c.noteCount > 0 ? `<span class="casos-client-badge notes">${c.noteCount} nota${c.noteCount > 1 ? 's' : ''}</span>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    if (countEl) countEl.textContent = String(casosClientList.length);
+    if (badgeEl) badgeEl.textContent = String(casosClientList.length);
+}
+
+function renderCasosDetail() {
+    const panel = document.getElementById('casos-detail-panel');
+    if (!panel) return;
+
+    if (!casosSelectedData) {
+        panel.innerHTML = '<div class="casos-empty-detail"><p>Seleccioná un cliente para ver sus mensajes.</p></div>';
+        return;
+    }
+
+    const d = casosSelectedData;
+    const name = d.pushName || d.phoneNumber;
+    const msgs = Array.isArray(d.messages) ? d.messages : [];
+    const notes = Array.isArray(d.notes) ? d.notes : [];
+
+    let msgsHtml = '';
+    if (msgs.length === 0) {
+        msgsHtml = '<div class="casos-no-messages">Sin mensajes</div>';
+    } else {
+        msgsHtml = msgs.map(m => {
+            let mediaHtml = '';
+            if (m.mediaType && m.mediaPath) {
+                const mediaId = `media_${m.id}`;
+                if (m.mediaType === 'image') {
+                    mediaHtml = `<div class="casos-msg-media" id="${mediaId}" data-path="${escapeHtml(m.mediaPath)}" data-type="image"><span class="casos-media-loading">Cargando imagen...</span></div>`;
+                } else if (m.mediaType === 'audio') {
+                    mediaHtml = `<div class="casos-msg-media" id="${mediaId}" data-path="${escapeHtml(m.mediaPath)}" data-type="audio"><span class="casos-media-loading">Cargando audio...</span></div>`;
+                } else if (m.mediaType === 'video') {
+                    mediaHtml = `<div class="casos-msg-media" id="${mediaId}" data-path="${escapeHtml(m.mediaPath)}" data-type="video"><span class="casos-media-loading">Cargando video...</span></div>`;
+                } else {
+                    mediaHtml = `<div class="casos-msg-media" id="${mediaId}" data-path="${escapeHtml(m.mediaPath)}" data-type="document"><span class="casos-media-loading">Documento adjunto</span></div>`;
+                }
+            }
+            const textHtml = m.text && !m.text.startsWith('[') ? `<div class="casos-msg-text">${escapeHtml(m.text)}</div>` : (m.mediaType ? '' : `<div class="casos-msg-text">${escapeHtml(m.text)}</div>`);
+            return `
+            <div class="casos-msg-bubble">
+                ${mediaHtml}
+                ${textHtml}
+                <div class="casos-msg-time">${formatCasosTime(m.timestamp)}</div>
+            </div>`;
+        }).join('');
+    }
+
+    let notesHtml = notes.map(n => `
+        <div class="casos-note-item">
+            <div class="casos-note-text">${escapeHtml(n.text)}</div>
+            <span class="casos-note-time">${formatCasosTime(n.timestamp)}</span>
+            <button class="casos-note-delete" onclick="deleteCasosNote('${escapeHtml(d.phoneNumber)}','${n.id}')" title="Eliminar">✕</button>
+        </div>
+    `).join('');
+
+    panel.innerHTML = `
+        <div class="casos-detail-header">
+            <div class="casos-detail-name">${escapeHtml(name)}</div>
+            <div class="casos-detail-phone">${escapeHtml(d.phoneNumber)} · ${msgs.length} mensaje${msgs.length !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="casos-messages-area" id="casos-messages-area">${msgsHtml}</div>
+        <div class="casos-notes-section">
+            <div class="casos-notes-header">Notas (${notes.length})</div>
+            <div class="casos-notes-list">${notesHtml || '<div style="padding:8px 16px;color:#ccc;font-size:12px;">Sin notas</div>'}</div>
+        </div>
+        <div class="casos-add-note">
+            <input type="text" id="casos-note-input" placeholder="Agregar nota..."
+                onkeypress="if(event.key==='Enter') addCasosNote()">
+            <button onclick="addCasosNote()">+ Nota</button>
+        </div>
+    `;
+
+    const area = document.getElementById('casos-messages-area');
+    if (area) area.scrollTop = area.scrollHeight;
+
+    loadMediaElements();
+}
+
+async function loadMediaElements() {
+    const mediaDivs = document.querySelectorAll('.casos-msg-media[data-path]');
+    for (const div of mediaDivs) {
+        const filePath = div.getAttribute('data-path');
+        const type = div.getAttribute('data-type');
+        if (!filePath || div.dataset.loaded) continue;
+        div.dataset.loaded = 'true';
+        try {
+            const dataUrl = await window.electronAPI.getMediaDataUrl(filePath);
+            if (!dataUrl) {
+                div.innerHTML = '<span style="color:#999;font-size:11px;">Archivo no disponible</span>';
+                continue;
+            }
+            if (type === 'image') {
+                div.innerHTML = `<img src="${dataUrl}" class="casos-media-img" onclick="this.classList.toggle('expanded')">`;
+            } else if (type === 'audio') {
+                div.innerHTML = `<audio controls src="${dataUrl}" class="casos-media-audio"></audio>`;
+            } else if (type === 'video') {
+                div.innerHTML = `<video controls src="${dataUrl}" class="casos-media-video"></video>`;
+            } else {
+                div.innerHTML = `<a href="#" class="casos-media-doc" onclick="return false;">📎 Documento adjunto</a>`;
+            }
+        } catch (e) {
+            div.innerHTML = '<span style="color:#999;font-size:11px;">Error cargando media</span>';
+        }
+    }
+    const area = document.getElementById('casos-messages-area');
+    if (area) area.scrollTop = area.scrollHeight;
+}
+
+async function loadCasosClientList() {
+    try {
+        casosClientList = await window.electronAPI.getConversationsList();
+        renderCasosClientList();
+    } catch (e) {
+        console.error('Error loading conversations:', e);
+    }
+}
+
+async function selectCasosClient(phoneNumber) {
+    casosSelectedPhone = phoneNumber;
+    try {
+        casosSelectedData = await window.electronAPI.getConversation(phoneNumber);
+    } catch (e) {
+        console.error('Error loading conversation:', e);
+        casosSelectedData = null;
+    }
+    renderCasosClientList();
+    renderCasosDetail();
+}
+
+async function addCasosNote() {
+    if (!casosSelectedPhone) return;
+    const input = document.getElementById('casos-note-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    await window.electronAPI.saveNote(casosSelectedPhone, text);
+    await selectCasosClient(casosSelectedPhone);
+    await loadCasosClientList();
+}
+
+async function deleteCasosNote(phoneNumber, noteId) {
+    await window.electronAPI.deleteNote(phoneNumber, noteId);
+    if (casosSelectedPhone === phoneNumber) {
+        await selectCasosClient(phoneNumber);
+    }
+    await loadCasosClientList();
+}
+
+window.electronAPI.onConversationMsg((payload) => {
+    const existing = casosClientList.find(c => c.phoneNumber === payload.phoneNumber);
+    if (existing) {
+        existing.lastMessage = payload.message.text;
+        existing.lastMessageTime = payload.message.timestamp;
+        existing.messageCount++;
+        if (payload.pushName) existing.pushName = payload.pushName;
+        casosClientList.sort((a, b) => {
+            if (!a.lastMessageTime) return 1;
+            if (!b.lastMessageTime) return -1;
+            return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+        });
+    } else {
+        casosClientList.unshift({
+            phoneNumber: payload.phoneNumber,
+            pushName: payload.pushName || '',
+            lastMessage: payload.message.text,
+            lastMessageTime: payload.message.timestamp,
+            messageCount: 1,
+            noteCount: 0,
+        });
+    }
+    renderCasosClientList();
+
+    if (casosSelectedPhone === payload.phoneNumber && casosSelectedData) {
+        const exists = casosSelectedData.messages.some(m => m.id === payload.message.id);
+        if (!exists) {
+            casosSelectedData.messages.push(payload.message);
+            renderCasosDetail();
+        }
+    }
+});
+
+window.selectCasosClient = selectCasosClient;
+window.addCasosNote = addCasosNote;
+window.deleteCasosNote = deleteCasosNote;
+
 // ══════════════════════════════════════════════════════════════
 // ── Gestión de configuración con tabs ──
 // ══════════════════════════════════════════════════════════════
@@ -140,8 +386,9 @@ let currentConfig = {};
 async function loadConfig() {
     try {
         currentConfig = await window.electronAPI.getConfig();
-        // Asegurar que la categoría "destacado" exista
-        if (!currentConfig.destacado) {
+        // Asegurar que la categoría "destacado" exista solo si ya hay otras categorías
+        const hasOtherCategories = Object.keys(currentConfig).some(k => k !== 'destacado' && (currentConfig[k]?.length ?? 0) >= 0);
+        if (hasOtherCategories && !currentConfig.destacado) {
             currentConfig.destacado = [];
             await window.electronAPI.saveConfig(currentConfig);
         }
@@ -1182,6 +1429,9 @@ function switchTab(tabId) {
         const category = String(tabId).replace(/^cat-/, '');
         fetchKitPricesForCategory(category);
     }
+    if (tabId === 'casos') {
+        loadCasosClientList();
+    }
 }
 
 function refreshKitRow(category, index) {
@@ -1210,4 +1460,5 @@ window.handleCotiListaChange = handleCotiListaChange;
 // ── Init ──
 loadConfig();
 loadCotizacion();
+loadCasosClientList();
 addLog('Panel de control listo. Presiona "Iniciar Bot" para comenzar.', 'info');

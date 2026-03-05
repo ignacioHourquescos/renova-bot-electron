@@ -1,8 +1,13 @@
 import { WASocket, DisconnectReason } from '@whiskeysockets/baileys';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { resolve, join } from 'path';
 import { getPhoneNumber, getMessageText } from './helpers.js';
 import { downloadMedia, isMediaMessage } from './media.js';
 import { formatCategory, buscarCodigo, consultarCosto, formatCotizacion } from './commands.js';
 import { loadBotConfig } from './config.js';
+
+const CONVERSATIONS_DIR = resolve(process.cwd(), 'conversations');
+const CONVERSATION_MSG_TAG = 'CONVERSATION_MSG';
 
 // ─── Deduplicación ──────────────────────────────────────────────────────────
 const processedMessages = new Set<string>();
@@ -97,57 +102,87 @@ async function handleCommand(sock: WASocket, from: string, text: string, senderI
 
 // ─── Handler de mensajes ────────────────────────────────────────────────────
 export function registerMessageHandler(sock: WASocket) {
+  sock.ev.on('messaging-history.set', ({ messages: msgs }) => {
+    for (const msg of msgs) {
+      cacheMessage(msg);
+    }
+    console.log(`📦 Historial recibido: ${msgs.length} mensajes cacheados (total en caché: ${messageCache.size})`);
+  });
+
   sock.ev.on('messages.upsert', async (m) => {
-    const message = m.messages[0];
-    if (!message?.key?.id) return;
-
-    const msgId = `${message.key.remoteJid}_${message.key.id}`;
-    if (isDuplicate(msgId)) return;
-
-    // Permitir mensajes de notify, append (de mí), y mensajes de grupos/difusión
-    const isGroup = message.key.remoteJid?.endsWith('@g.us');
-    const isBroadcast = message.key.remoteJid?.includes('@broadcast');
-    
-    if (m.type !== 'notify' && !(m.type === 'append' && message.key.fromMe)) {
-      // Permitir también mensajes de grupos/difusión
-      if (!isGroup && !isBroadcast) return;
+    // Cachear TODOS los mensajes del batch
+    for (const msg of m.messages) {
+      cacheMessage(msg);
     }
 
-    const messageText = getMessageText(message.message);
-    const from = message.key.remoteJid || '';
-    const phoneNumber = getPhoneNumber(from);
-    const messageId = message.key.id || 'unknown';
-    const isFromMe = message.key.fromMe;
+    // Procesar cada mensaje del batch (incluye history/sync para backfill de media)
+    let firstMessageCommandCheck = false;
+    let firstProcessedForAutoReply = false;
+    for (const message of m.messages) {
+      if (!message?.key?.id) continue;
 
-    // Logs reducidos - solo comandos importantes
-    // if (isFromMe) {
-    //   console.log(`📤 Mensaje enviado por ti: ${messageText}`);
-    // } else {
-    //   console.log(`📨 Mensaje de ${phoneNumber}: ${messageText}`);
-    // }
+      const isGroup = message.key.remoteJid?.endsWith('@g.us');
+      const isBroadcast = message.key.remoteJid?.includes('@broadcast');
+      const isFromMe = message.key.fromMe;
+      const from = message.key.remoteJid || '';
+      const phoneNumber = getPhoneNumber(from);
+      const messageId = message.key.id || 'unknown';
+      const messageText = getMessageText(message.message);
 
-    const senderInfo = isFromMe ? 'tu' : phoneNumber;
+      // Solo guardar en conversaciones: mensajes de clientes en chats individuales
+      if (isFromMe || isGroup || isBroadcast) continue;
 
-    // Ejecutar comando (funciona en chats individuales, grupos y listas de difusión)
-    const wasCommand = await handleCommand(sock, from, messageText, senderInfo);
-    if (wasCommand) return;
-
-    // Solo para mensajes de otros en chats individuales (no en grupos para evitar spam)
-    if (!isFromMe && !isGroup && !isBroadcast) {
-      if (message.message && isMediaMessage(message.message)) {
-        console.log(`📎 Media detectado de ${phoneNumber}`);
-        await downloadMedia(message.message, phoneNumber, messageId, sock);
+      // Deduplicar solo para notify
+      if (m.type === 'notify') {
+        const msgId = `${message.key.remoteJid}_${message.key.id}`;
+        if (isDuplicate(msgId)) continue;
       }
 
-      const lower = messageText.toLowerCase();
-      if (lower === 'hola' || lower === 'hi') {
-        await sendSafe(sock, from, {
-          text: '¡Hola! 👋 Soy un bot de WhatsApp creado con Baileys. ¿En qué puedo ayudarte?',
-        });
-      } else if (lower === 'ping') {
-        await sendSafe(sock, from, { text: '🏓 Pong!' });
-      } else if (lower.startsWith('echo ')) {
-        await sendSafe(sock, from, { text: `Echo: ${messageText.substring(5)}` });
+      // Comandos: solo para el primer mensaje notify procesado
+      if (m.type === 'notify' && !firstMessageCommandCheck) {
+        firstMessageCommandCheck = true;
+        const senderInfo = phoneNumber;
+        const wasCommand = await handleCommand(sock, from, messageText, senderInfo);
+        if (wasCommand) return;
+      }
+
+      // Descargar media si existe (Baileys requiere el mensaje completo con key y message)
+      let media: { type: 'image' | 'audio' | 'video' | 'document'; path: string } | undefined;
+      if (message.message && isMediaMessage(message.message)) {
+        const mediaDir = join(CONVERSATIONS_DIR, 'media', phoneNumber);
+        const filePath = await downloadMedia(message, phoneNumber, messageId, sock, mediaDir);
+        if (filePath) {
+          const ct = message.message.imageMessage ? 'image'
+            : message.message.audioMessage ? 'audio'
+            : message.message.videoMessage ? 'video'
+            : 'document';
+          media = { type: ct as any, path: filePath };
+        }
+      }
+
+      const rawTs = message.messageTimestamp;
+      const ts = rawTs ? (typeof rawTs === 'number' ? rawTs : Number(rawTs)) : undefined;
+      const pushName = message.pushName || '';
+      const savedMsg = appendConversationMessage(phoneNumber, pushName, messageText, ts, messageId, media);
+
+      if (m.type === 'notify') {
+        const payload = { phoneNumber, pushName, message: savedMsg };
+        console.log(`[${CONVERSATION_MSG_TAG}]${JSON.stringify(payload)}[/${CONVERSATION_MSG_TAG}]`);
+      }
+
+      // Respuestas automáticas solo para el primer mensaje notify procesado
+      if (m.type === 'notify' && !firstProcessedForAutoReply) {
+        firstProcessedForAutoReply = true;
+        const lower = messageText.toLowerCase();
+        if (lower === 'hola' || lower === 'hi') {
+          await sendSafe(sock, from, {
+            text: '¡Hola! 👋 Soy un bot de WhatsApp creado con Baileys. ¿En qué puedo ayudarte?',
+          });
+        } else if (lower === 'ping') {
+          await sendSafe(sock, from, { text: '🏓 Pong!' });
+        } else if (lower.startsWith('echo ')) {
+          await sendSafe(sock, from, { text: `Echo: ${messageText.substring(5)}` });
+        }
       }
     }
   });
@@ -155,7 +190,7 @@ export function registerMessageHandler(sock: WASocket) {
 
 // ─── Handler de reacciones ──────────────────────────────────────────────────
 const messageCache = new Map<string, any>();
-const CACHE_TTL_MS = 3_600_000;
+const CACHE_TTL_MS = 24 * 3_600_000;
 
 export function cacheMessage(message: any) {
   if (!message?.key?.id || !message?.key?.remoteJid) return;
@@ -164,20 +199,118 @@ export function cacheMessage(message: any) {
   setTimeout(() => messageCache.delete(key), CACHE_TTL_MS);
 }
 
+export function getCachedMessage(jid: string, id: string): any | undefined {
+  return messageCache.get(`${jid}_${id}`);
+}
+
+// ─── Conversaciones por cliente ──────────────────────────────────────────────
+
+interface ConversationMessage {
+  id: string;
+  text: string;
+  timestamp: string;
+  mediaType?: 'image' | 'audio' | 'video' | 'document';
+  mediaPath?: string;
+}
+
+interface ConversationFile {
+  phoneNumber: string;
+  pushName: string;
+  messages: ConversationMessage[];
+  notes: Array<{ id: string; text: string; timestamp: string }>;
+}
+
+function readConversation(phoneNumber: string): ConversationFile {
+  const filePath = join(CONVERSATIONS_DIR, `${phoneNumber}.json`);
+  if (existsSync(filePath)) {
+    try {
+      const raw = readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(raw);
+      return {
+        phoneNumber: data.phoneNumber || phoneNumber,
+        pushName: data.pushName || '',
+        messages: Array.isArray(data.messages) ? data.messages : [],
+        notes: Array.isArray(data.notes) ? data.notes : [],
+      };
+    } catch { /* corrupted file, start fresh */ }
+  }
+  return { phoneNumber, pushName: '', messages: [], notes: [] };
+}
+
+function writeConversation(phoneNumber: string, data: ConversationFile) {
+  if (!existsSync(CONVERSATIONS_DIR)) {
+    mkdirSync(CONVERSATIONS_DIR, { recursive: true });
+  }
+  writeFileSync(join(CONVERSATIONS_DIR, `${phoneNumber}.json`), JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function updateConversationMessageMedia(
+  phoneNumber: string,
+  messageId: string,
+  media: { type: 'image' | 'audio' | 'video' | 'document'; path: string },
+): boolean {
+  const conv = readConversation(phoneNumber);
+  const msgId = `msg_${messageId}`;
+  const idx = conv.messages.findIndex(m => m.id === msgId);
+  if (idx === -1 || conv.messages[idx].mediaPath) return false;
+  conv.messages[idx].mediaType = media.type;
+  conv.messages[idx].mediaPath = media.path;
+  writeConversation(phoneNumber, conv);
+  return true;
+}
+
+function appendConversationMessage(
+  phoneNumber: string,
+  pushName: string,
+  text: string,
+  messageTimestamp: number | undefined,
+  messageId: string,
+  media?: { type: 'image' | 'audio' | 'video' | 'document'; path: string },
+): ConversationMessage {
+  const conv = readConversation(phoneNumber);
+  if (pushName && pushName !== conv.pushName) {
+    conv.pushName = pushName;
+  }
+
+  const ts = messageTimestamp
+    ? new Date(messageTimestamp * 1000).toISOString()
+    : new Date().toISOString();
+
+  const msg: ConversationMessage = {
+    id: `msg_${messageId}`,
+    text,
+    timestamp: ts,
+  };
+
+  if (media) {
+    msg.mediaType = media.type;
+    msg.mediaPath = media.path;
+  }
+
+  const exists = conv.messages.some(m => m.id === msg.id);
+  if (!exists) {
+    conv.messages.push(msg);
+    writeConversation(phoneNumber, conv);
+  } else if (media) {
+    // Actualizar media en mensaje existente si no tenía
+    updateConversationMessageMedia(phoneNumber, messageId, media);
+  }
+
+  return msg;
+}
+
 export function registerReactionHandler(sock: WASocket) {
   sock.ev.on('messages.reaction', async (reactions) => {
     for (const reaction of reactions) {
       const { key, reaction: reactionData } = reaction;
       const reactionText = reactionData?.text || '👍';
       const messageJid = key?.remoteJid || '';
-      const phoneNumber = getPhoneNumber(messageJid);
 
-      let originalText = 'Mensaje no disponible';
       const cacheKey = `${messageJid}_${key?.id || ''}`;
       const cached = messageCache.get(cacheKey);
-      if (cached?.message) {
-        originalText = getMessageText(cached.message);
-      }
+      const senderJid = cached?.key?.participant || cached?.key?.remoteJid || messageJid;
+      const originalText = cached?.message ? getMessageText(cached.message) : 'Mensaje no disponible';
+      const phoneNumber = getPhoneNumber(senderJid);
 
       console.log(`\n⭐ REACCIÓN RECIBIDA:`);
       console.log(`   📱 Número: ${phoneNumber}`);

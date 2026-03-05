@@ -7,7 +7,7 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
 import { resolve } from 'path';
-import { registerMessageHandler, registerReactionHandler } from './handlers.js';
+import { registerMessageHandler, registerReactionHandler, getCachedMessage } from './handlers.js';
 
 const logger = pino({ level: 'silent' });
 
@@ -66,7 +66,12 @@ export async function connectToWhatsApp(): Promise<void> {
     version,
     logger,
     auth: state,
-    getMessage: async () => ({ conversation: 'Mensaje no disponible' }),
+    syncFullHistory: true,
+    shouldSyncHistoryMessage: () => true,
+    getMessage: async (key) => {
+      const cached = getCachedMessage(key.remoteJid || '', key.id || '');
+      return cached?.message || undefined;
+    },
   });
 
   currentSock = sock;

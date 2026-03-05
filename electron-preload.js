@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getArticlesPrice: (codes, listId) => ipcRenderer.invoke('get-articles-price', codes, listId),
   getCotizacion: () => ipcRenderer.invoke('get-cotizacion'),
   saveCotizacion: (data) => ipcRenderer.invoke('save-cotizacion', data),
+  getConversationsList: () => ipcRenderer.invoke('get-conversations-list'),
+  getConversation: (phone) => ipcRenderer.invoke('get-conversation', phone),
+  saveNote: (phone, text) => ipcRenderer.invoke('save-note', phone, text),
+  deleteNote: (phone, noteId) => ipcRenderer.invoke('delete-note', phone, noteId),
+  onConversationMsg: (callback) => ipcRenderer.on('conversation-msg', (event, data) => callback(data)),
+  getMediaDataUrl: (filePath) => ipcRenderer.invoke('get-media-data-url', filePath),
   // Window controls (custom frameless titlebar)
   windowMinimize: () => ipcRenderer.invoke('window-minimize'),
   windowMaximize: () => ipcRenderer.invoke('window-maximize'),
