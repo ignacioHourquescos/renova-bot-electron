@@ -5,9 +5,37 @@ import { getPhoneNumber, getMessageText } from './helpers.js';
 import { downloadMedia, isMediaMessage } from './media.js';
 import { formatCategory, buscarCodigo, consultarCosto, formatCotizacion } from './commands.js';
 import { loadBotConfig } from './config.js';
+import { sendPedido, formatClientPhone, fileToBase64, type PedidoPayload } from './pedidos-api.js';
+import {
+  isFirebaseStorageAvailable,
+  uploadToFirebaseStorage,
+  buildPedidoStoragePath,
+} from './firebase-storage.js';
 
 const CONVERSATIONS_DIR = resolve(process.cwd(), 'conversations');
 const CONVERSATION_MSG_TAG = 'CONVERSATION_MSG';
+
+// ─── Flujo de pedidos (orden flexible: nombre o media primero) ─────────────────
+interface PedidoFlowState {
+  clientName?: string;
+  content?: PedidoPayload['content'];
+}
+
+const pedidoFlowState = new Map<string, PedidoFlowState>();
+const PEDIDO_FLOW_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+
+function getPedidoFlow(phoneNumber: string): PedidoFlowState | undefined {
+  return pedidoFlowState.get(phoneNumber);
+}
+
+function setPedidoFlow(phoneNumber: string, state: PedidoFlowState | null): void {
+  if (state) {
+    pedidoFlowState.set(phoneNumber, state);
+    setTimeout(() => pedidoFlowState.delete(phoneNumber), PEDIDO_FLOW_TIMEOUT_MS);
+  } else {
+    pedidoFlowState.delete(phoneNumber);
+  }
+}
 
 // ─── Deduplicación ──────────────────────────────────────────────────────────
 const processedMessages = new Set<string>();
@@ -67,6 +95,13 @@ async function handleCommand(sock: WASocket, from: string, text: string, senderI
       await sendSafe(sock, from, { text: '❌ Por favor, especifica un código. Ejemplo: costo.CF9323' });
       return true;
     }
+  }
+
+  // Comando .pedido → iniciar flujo guiado (orden flexible: nombre o media primero)
+  if (lower === '.pedido' || lower === 'pedido') {
+    setPedidoFlow(senderInfo, {});
+    await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente ¿Detalle pedido?' });
+    return true;
   }
 
   // Comando .coti → enviar cotización armada en Electron
@@ -136,6 +171,170 @@ export function registerMessageHandler(sock: WASocket) {
       if (m.type === 'notify') {
         const msgId = `${message.key.remoteJid}_${message.key.id}`;
         if (isDuplicate(msgId)) continue;
+      }
+
+      // ─── Auto-activar flujo de pedidos al recibir imagen o audio (sin .pedido) ─
+      const flowBefore = getPedidoFlow(phoneNumber);
+      const msgContent = message.message;
+      const isImageOrAudio = msgContent && (msgContent.imageMessage || msgContent.audioMessage);
+      if (!flowBefore && isImageOrAudio && msgContent) {
+        const mediaDir = join(CONVERSATIONS_DIR, 'media', phoneNumber);
+        const filePath = await downloadMedia(message, phoneNumber, messageId, sock, mediaDir);
+        if (filePath) {
+          const ct = msgContent.imageMessage ? 'image' : 'audio';
+          const ext = filePath.split('.').pop()?.toLowerCase() || (ct === 'audio' ? 'ogg' : 'jpg');
+          let content: PedidoPayload['content'];
+          if (isFirebaseStorageAvailable()) {
+            const remotePath = buildPedidoStoragePath(messageId, ct, ext);
+            const uploaded = await uploadToFirebaseStorage(filePath, remotePath);
+            if (uploaded) {
+              content = { type: ct, storageUrl: uploaded.storageUrl, storagePath: uploaded.storagePath };
+            } else {
+              const b64 = fileToBase64(filePath);
+              content = { type: ct, dataBase64: b64?.data ?? undefined, mimeType: b64?.mimeType ?? 'application/octet-stream' };
+            }
+          } else {
+            const b64 = fileToBase64(filePath);
+            content = { type: ct, dataBase64: b64?.data ?? undefined, mimeType: b64?.mimeType ?? 'application/octet-stream' };
+          }
+          setPedidoFlow(phoneNumber, { content });
+          await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente' });
+          continue;
+        }
+        await sendSafe(sock, from, { text: '❌ No pude descargar el archivo. Intentá reenviarlo.' });
+        continue;
+      }
+
+      // ─── Flujo de pedidos (orden flexible: nombre o media primero) ───────────
+      const flow = getPedidoFlow(phoneNumber);
+      if (flow) {
+        const lowerText = messageText.toLowerCase().trim();
+        if (lowerText === 'cancelar' || lowerText === 'cancel') {
+          setPedidoFlow(phoneNumber, null);
+          await sendSafe(sock, from, { text: '❌ Pedido cancelado.' });
+          continue;
+        }
+
+        const hasName = !!flow.clientName;
+        const hasContent = !!flow.content;
+
+        // Procesar media a content (helper inline)
+        async function processMediaToContent(): Promise<PedidoPayload['content'] | null> {
+          if (!message.message || !isMediaMessage(message.message)) return null;
+          const mediaDir = join(CONVERSATIONS_DIR, 'media', phoneNumber);
+          const filePath = await downloadMedia(message, phoneNumber, messageId, sock, mediaDir);
+          if (!filePath) return null;
+          const ct = message.message.imageMessage ? 'image' : message.message.audioMessage ? 'audio' : 'image';
+          const ext = filePath.split('.').pop()?.toLowerCase() || (ct === 'audio' ? 'ogg' : 'jpg');
+          if (isFirebaseStorageAvailable()) {
+            const remotePath = buildPedidoStoragePath(messageId, ct as 'audio' | 'image', ext);
+            const uploaded = await uploadToFirebaseStorage(filePath, remotePath);
+            if (uploaded) {
+              return { type: ct as 'image' | 'audio', storageUrl: uploaded.storageUrl, storagePath: uploaded.storagePath };
+            }
+          }
+          const b64 = fileToBase64(filePath);
+          return {
+            type: ct as 'image' | 'audio',
+            dataBase64: b64?.data ?? undefined,
+            mimeType: b64?.mimeType ?? 'application/octet-stream',
+          };
+        }
+
+        // Caso 1: No tenemos nada aún → aceptar nombre O media
+        if (!hasName && !hasContent) {
+          if (message.message && isMediaMessage(message.message)) {
+            const content = await processMediaToContent();
+            if (!content) {
+              await sendSafe(sock, from, { text: '❌ No pude descargar el archivo. Intentá de nuevo.' });
+              continue;
+            }
+            setPedidoFlow(phoneNumber, { content });
+            await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente' });
+            continue;
+          }
+          const text = messageText.trim();
+          if (!text) {
+            await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente ¿Detalle pedido?' });
+            continue;
+          }
+          setPedidoFlow(phoneNumber, { clientName: text });
+          await sendSafe(sock, from, { text: '¿Detalle pedido?' });
+          continue;
+        }
+
+        // Caso 2: Tenemos nombre, falta contenido
+        if (hasName && !hasContent) {
+          let content: PedidoPayload['content'] | null = null;
+          if (message.message && isMediaMessage(message.message)) {
+            content = await processMediaToContent();
+            if (!content) {
+              await sendSafe(sock, from, { text: '❌ No pude descargar el archivo. Intentá de nuevo.' });
+              continue;
+            }
+          } else {
+            const text = messageText.trim();
+            if (!text) {
+              await sendSafe(sock, from, { text: '¿Detalle pedido?' });
+              continue;
+            }
+            content = { type: 'text', text };
+          }
+          const rawTs = message.messageTimestamp;
+          const msgTs = rawTs ? (typeof rawTs === 'number' ? rawTs : Number(rawTs)) : undefined;
+          const payload: PedidoPayload = {
+            messageId,
+            clientPhone: formatClientPhone(phoneNumber),
+            content,
+            timestamp: msgTs ? Math.floor(msgTs) : undefined,
+            metadata: { clientName: flow.clientName || '', pushName: message.pushName || '' },
+          };
+          const result = await sendPedido(payload);
+          setPedidoFlow(phoneNumber, null);
+          if (result.success) {
+            await sendSafe(sock, from, { text: 'Pedido ingresado a sistema correctamente' });
+          } else {
+            await sendSafe(sock, from, { text: `❌ Error al enviar el pedido: ${result.error || 'Error desconocido'}` });
+          }
+          continue;
+        }
+
+        // Caso 3: Tenemos contenido, falta nombre
+        if (hasContent && !hasName) {
+          if (message.message && isMediaMessage(message.message)) {
+            // Nueva media → reemplazar contenido y pedir nombre de nuevo
+            const newContent = await processMediaToContent();
+            if (newContent) {
+              setPedidoFlow(phoneNumber, { content: newContent });
+              await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente' });
+            } else {
+              await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente' });
+            }
+            continue;
+          }
+          const clientName = messageText.trim();
+          if (!clientName) {
+            await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente' });
+            continue;
+          }
+          const rawTs = message.messageTimestamp;
+          const msgTs = rawTs ? (typeof rawTs === 'number' ? rawTs : Number(rawTs)) : undefined;
+          const payload: PedidoPayload = {
+            messageId,
+            clientPhone: formatClientPhone(phoneNumber),
+            content: flow.content!,
+            timestamp: msgTs ? Math.floor(msgTs) : undefined,
+            metadata: { clientName, pushName: message.pushName || '' },
+          };
+          const result = await sendPedido(payload);
+          setPedidoFlow(phoneNumber, null);
+          if (result.success) {
+            await sendSafe(sock, from, { text: 'Pedido ingresado a sistema correctamente' });
+          } else {
+            await sendSafe(sock, from, { text: `❌ Error al enviar el pedido: ${result.error || 'Error desconocido'}` });
+          }
+          continue;
+        }
       }
 
       // Comandos: solo para el primer mensaje notify procesado

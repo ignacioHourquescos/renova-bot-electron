@@ -19,11 +19,12 @@
   "license": "MIT",
   "dependencies": {
     "@hapi/boom": "^10.0.0",
-    "dotenv": "^16.4.5",
-    "openai": "^4.77.0",
     "@napi-rs/canvas": "^0.1.95",
     "@whiskeysockets/baileys": "^6.7.21",
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^13.7.0",
     "nodemon": "^3.1.14",
+    "openai": "^4.77.0",
     "pino": "^9.0.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0"

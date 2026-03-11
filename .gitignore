@@ -10,3 +10,5 @@ downloads/
 *.exe
 out/
 conversations/
+firebase-service-account.json
+*-service-account*.json
