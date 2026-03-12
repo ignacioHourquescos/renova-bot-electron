@@ -72,6 +72,7 @@ export async function sendPedido(payload: PedidoPayload): Promise<PedidoResponse
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
     });
 
     const data = (await res.json().catch(() => ({}))) as PedidoResponse & { error?: string };
@@ -93,9 +94,12 @@ export async function sendPedido(payload: PedidoPayload): Promise<PedidoResponse
       details: data.details,
     };
   } catch (err: any) {
+    const msg = err?.message || String(err);
+    const cause = err?.cause?.message || err?.cause?.code;
+    console.error('❌ Error al enviar pedido:', msg, cause ? `(causa: ${cause})` : '', '| URL:', url);
     return {
       success: false,
-      error: err?.message || String(err),
+      error: msg,
     };
   }
 }

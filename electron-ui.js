@@ -144,6 +144,25 @@ function escapeHtml(s) {
     return div.innerHTML;
 }
 
+function formatPhoneForDisplay(num) {
+    if (!num || typeof num !== 'string') return num || '';
+    const d = num.replace(/\D/g, '');
+    if (d.startsWith('54') && d.length >= 10) {
+        const rest = d.slice(2);
+        if (rest.startsWith('9') && rest.length >= 10) {
+            const area = rest.slice(1, 3);
+            const part = rest.slice(3);
+            return `+54 9 ${area} ${part.slice(0, 4)}-${part.slice(4)}`;
+        }
+        if (rest.length >= 9) {
+            const area = rest.slice(0, 2);
+            const part = rest.slice(2);
+            return `+54 ${area} ${part.slice(0, 4)}-${part.slice(4)}`;
+        }
+    }
+    return num;
+}
+
 function formatCasosTime(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -176,11 +195,10 @@ function renderCasosClientList() {
         listEl.innerHTML = casosClientList.map(c => {
             const isActive = c.phoneNumber === casosSelectedPhone;
             const name = c.pushName || c.phoneNumber;
-            const showPhone = c.pushName ? c.phoneNumber : '';
             return `
             <div class="casos-client-item${isActive ? ' active' : ''}" onclick="selectCasosClient('${escapeHtml(c.phoneNumber)}')">
                 <div class="casos-client-name">${escapeHtml(name)}</div>
-                ${showPhone ? `<div class="casos-client-phone">${escapeHtml(showPhone)}</div>` : ''}
+                <div class="casos-client-phone">${escapeHtml(formatPhoneForDisplay(c.phoneNumber))}</div>
                 <div class="casos-client-preview">${escapeHtml(c.lastMessage || '')}</div>
                 <span class="casos-client-time">${formatCasosTimeAgo(c.lastMessageTime)}</span>
             </div>`;
@@ -242,7 +260,7 @@ function renderCasosDetail() {
     panel.innerHTML = `
         <div class="casos-detail-header">
             <div class="casos-detail-name">${escapeHtml(name)}</div>
-            <div class="casos-detail-phone">${escapeHtml(d.phoneNumber)} · ${msgs.length} mensaje${msgs.length !== 1 ? 's' : ''}</div>
+            <div class="casos-detail-phone">${escapeHtml(formatPhoneForDisplay(d.phoneNumber))} · ${msgs.length} mensaje${msgs.length !== 1 ? 's' : ''}</div>
         </div>
         <div class="casos-messages-area" id="casos-messages-area">${msgsHtml}</div>
         <div class="casos-notes-section">

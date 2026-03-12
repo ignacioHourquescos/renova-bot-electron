@@ -1,7 +1,7 @@
 import { WASocket, DisconnectReason } from '@whiskeysockets/baileys';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, join } from 'path';
-import { getPhoneNumber, getMessageText } from './helpers.js';
+import { getPhoneNumber, getMessageText, getSenderPhoneNumber } from './helpers.js';
 import { downloadMedia, isMediaMessage } from './media.js';
 import { formatCategory, buscarCodigo, consultarCosto, formatCotizacion } from './commands.js';
 import { loadBotConfig } from './config.js';
@@ -23,6 +23,19 @@ interface PedidoFlowState {
 
 const pedidoFlowState = new Map<string, PedidoFlowState>();
 const PEDIDO_FLOW_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos
+
+const PEDIDOS_WHITELIST = (process.env.PEDIDOS_WHITELIST_NUMBERS ?? '5491140565047,5491165106333')
+  .split(',')
+  .map((n) => n.trim().replace(/\D/g, ''))
+  .filter(Boolean);
+
+function isPedidoAllowed(phoneNumber: string): boolean {
+  if (PEDIDOS_WHITELIST.length === 0) return true;
+  const normalized = phoneNumber.replace(/\D/g, '');
+  return PEDIDOS_WHITELIST.some(
+    (allowed) => normalized === allowed || normalized.endsWith(allowed) || allowed.endsWith(normalized),
+  );
+}
 
 function getPedidoFlow(phoneNumber: string): PedidoFlowState | undefined {
   return pedidoFlowState.get(phoneNumber);
@@ -99,6 +112,7 @@ async function handleCommand(sock: WASocket, from: string, text: string, senderI
 
   // Comando .pedido → iniciar flujo guiado (orden flexible: nombre o media primero)
   if (lower === '.pedido' || lower === 'pedido') {
+    if (!isPedidoAllowed(senderInfo)) return false;
     setPedidoFlow(senderInfo, {});
     await sendSafe(sock, from, { text: 'Ingrese nombre de Cliente ¿Detalle pedido?' });
     return true;
@@ -160,7 +174,7 @@ export function registerMessageHandler(sock: WASocket) {
       const isBroadcast = message.key.remoteJid?.includes('@broadcast');
       const isFromMe = message.key.fromMe;
       const from = message.key.remoteJid || '';
-      const phoneNumber = getPhoneNumber(from);
+      const phoneNumber = await getSenderPhoneNumber(message, sock);
       const messageId = message.key.id || 'unknown';
       const messageText = getMessageText(message.message);
 
@@ -177,7 +191,7 @@ export function registerMessageHandler(sock: WASocket) {
       const flowBefore = getPedidoFlow(phoneNumber);
       const msgContent = message.message;
       const isImageOrAudio = msgContent && (msgContent.imageMessage || msgContent.audioMessage);
-      if (!flowBefore && isImageOrAudio && msgContent) {
+      if (!flowBefore && isImageOrAudio && msgContent && isPedidoAllowed(phoneNumber)) {
         const mediaDir = join(CONVERSATIONS_DIR, 'media', phoneNumber);
         const filePath = await downloadMedia(message, phoneNumber, messageId, sock, mediaDir);
         if (filePath) {

@@ -10,6 +10,32 @@ export function getPhoneNumber(jid: string): string {
   return phoneNumber;
 }
 
+type SockWithLID = { signalRepository?: { lidMapping?: { getPNForLID: (lid: string) => Promise<string | null> } } };
+
+/**
+ * Obtiene el número de teléfono real del remitente.
+ * WhatsApp puede enviar remoteJid como @lid (ID interno) en vez del número real.
+ * Prioriza: remoteJidAlt/participantAlt (formato @s.whatsapp.net) > lidMapping.getPNForLID > remoteJid.
+ */
+export async function getSenderPhoneNumber(message: any, sock?: SockWithLID): Promise<string> {
+  const key = message?.key;
+  if (!key) return 'Desconocido';
+  const isGroup = key.remoteJid?.endsWith('@g.us');
+  const primaryJid = isGroup ? key.participant : key.remoteJid;
+  const altJid = isGroup ? key.participantAlt : key.remoteJidAlt;
+
+  if (altJid?.includes('@s.whatsapp.net')) {
+    return getPhoneNumber(altJid);
+  }
+  const jid = primaryJid || (key.remoteJid ?? '');
+  if (jid.endsWith('@lid') && sock?.signalRepository?.lidMapping?.getPNForLID) {
+    const lid = jid.split('@')[0];
+    const pn = await sock.signalRepository.lidMapping.getPNForLID(lid);
+    if (pn) return getPhoneNumber(pn);
+  }
+  return getPhoneNumber(jid);
+}
+
 /**
  * Extrae el texto legible de un mensaje de WhatsApp.
  */

@@ -20,7 +20,7 @@
   "dependencies": {
     "@hapi/boom": "^10.0.0",
     "@napi-rs/canvas": "^0.1.95",
-    "@whiskeysockets/baileys": "^6.7.21",
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "dotenv": "^16.4.5",
     "firebase-admin": "^13.7.0",
     "nodemon": "^3.1.14",
